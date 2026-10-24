@@ -1,0 +1,6 @@
+{
+  "name": "CropDoc AI",
+  "description": "AI-Based Crop Disease Detection and Remedy Recommendation Mobile Application developed by Saqlain Niazi (Islamia University of Bahawalpur - IUB BS IT Final Year Project). Features automated crop disease diagnosis, dual-language English & Urdu remedies, symptoms, and organic/chemical treatments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
