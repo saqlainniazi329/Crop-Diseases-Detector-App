@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,14 +32,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -59,10 +63,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -73,12 +77,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import com.example.model.CropDiseaseKnowledgeBase
+import androidx.credentials.CredentialManager
+import com.example.data.model.CropScanEntity
 import com.example.ui.CropAppViewModel
 import com.example.ui.CropUiState
+import com.example.ui.auth.AuthManager
 import com.example.ui.theme.AgriGreenPrimary
 import com.example.ui.theme.AgriGreenSecondary
+import com.example.ui.theme.AgriHealthyGreen
 import com.example.ui.theme.AgriRedDisease
+import com.google.firebase.auth.FirebaseUser
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +97,10 @@ fun HomeScreen(
     viewModel: CropAppViewModel
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val credentialManager = remember { CredentialManager.create(context) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     var serverInput by remember { mutableStateOf(uiState.serverUrl) }
 
@@ -152,9 +165,11 @@ fun HomeScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Top App Bar Header
+            // Top App Bar Header with Auth Status & Settings
             HomeTopBar(
-                serverUrl = uiState.serverUrl,
+                currentUser = uiState.currentUser,
+                onSignInClick = { viewModel.navigateToSignIn() },
+                onProfileClick = { showSignOutDialog = true },
                 onSettingsClick = {
                     serverInput = uiState.serverUrl
                     showSettingsDialog = true
@@ -171,7 +186,7 @@ fun HomeScreen(
             ) {
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
-                    HeroWelcomeCard()
+                    HeroWelcomeCard(currentUser = uiState.currentUser)
                 }
 
                 item {
@@ -234,9 +249,7 @@ fun HomeScreen(
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = AgriGreenPrimary
                             ),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = Brush.linearGradient(listOf(AgriGreenPrimary, AgriGreenSecondary))
-                            )
+                            border = BorderStroke(1.5.dp, AgriGreenPrimary)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Image,
@@ -249,6 +262,53 @@ fun HomeScreen(
                                 text = "🖼️ Upload from Gallery",
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                             )
+                        }
+                    }
+                }
+
+                // Cloud-Synced History Section (when user has Firestore records)
+                if (uiState.currentUser != null && uiState.cloudScans.isNotEmpty()) {
+                    item {
+                        CloudScansSection(scans = uiState.cloudScans)
+                    }
+                } else if (uiState.currentUser == null) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.navigateToSignIn() },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(AgriGreenPrimary.copy(alpha = 0.12f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CloudDone,
+                                        contentDescription = null,
+                                        tint = AgriGreenPrimary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Cloud Sync Available",
+                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                    Text(
+                                        text = "Sign in with Google to backup your scan history to Firebase Firestore.",
+                                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -311,6 +371,48 @@ fun HomeScreen(
         }
     }
 
+    // Sign Out Confirmation Dialog
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            title = { Text("Account Profile") },
+            text = {
+                Column {
+                    Text("Signed in as:")
+                    Text(
+                        text = uiState.currentUser?.email ?: "Google User",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    Text(
+                        text = "Your crop diagnosis history is securely synchronized to Firebase Firestore in real-time.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline),
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSignOutDialog = false
+                        AuthManager.signOut(
+                            credentialManager = credentialManager,
+                            onSignOutComplete = {},
+                            scope = coroutineScope
+                        )
+                    }
+                ) {
+                    Text("Sign Out", color = AgriRedDisease)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
     // Backend Flask Settings Dialog
     if (showSettingsDialog) {
         AlertDialog(
@@ -359,7 +461,9 @@ fun HomeScreen(
 
 @Composable
 private fun HomeTopBar(
-    serverUrl: String,
+    currentUser: FirebaseUser?,
+    onSignInClick: () -> Unit,
+    onProfileClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
     Surface(
@@ -406,22 +510,66 @@ private fun HomeTopBar(
                 }
             }
 
-            IconButton(
-                onClick = onSettingsClick,
-                modifier = Modifier.testTag("backend_settings_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Backend Settings",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (currentUser != null) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = AgriGreenPrimary.copy(alpha = 0.12f),
+                        modifier = Modifier.clickable { onProfileClick() }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDone,
+                                contentDescription = "Synced",
+                                tint = AgriGreenPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Synced",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = AgriGreenPrimary
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = onSignInClick,
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Text(
+                            text = "Sign In",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.testTag("backend_settings_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Backend Settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun HeroWelcomeCard() {
+private fun HeroWelcomeCard(currentUser: FirebaseUser?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -453,7 +601,7 @@ private fun HeroWelcomeCard() {
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "CNN Deep Learning Model",
+                            text = if (currentUser != null) "Cloud Synced • Firebase Active" else "CNN Deep Learning Model",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFFFD54F)
@@ -487,6 +635,84 @@ private fun HeroWelcomeCard() {
                     ),
                     modifier = Modifier.padding(top = 4.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CloudScansSection(scans: List<CropScanEntity>) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Firestore Cloud Records (${scans.size})",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+            Surface(
+                color = AgriGreenPrimary.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "Live Firestore",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = AgriGreenPrimary
+                    ),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(scans) { scan ->
+                val isHealthy = scan.diseaseName.equals("Healthy", ignoreCase = true)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, if (isHealthy) AgriHealthyGreen.copy(alpha = 0.4f) else AgriRedDisease.copy(alpha = 0.3f)),
+                    modifier = Modifier.width(170.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(if (isHealthy) AgriHealthyGreen else AgriRedDisease, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${(scan.confidence * 100).toInt()}% match",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isHealthy) AgriHealthyGreen else AgriRedDisease
+                                )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = scan.diseaseName,
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1
+                        )
+                        Text(
+                            text = scan.diseaseNameUrdu,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.outline,
+                                fontSize = 11.sp
+                            ),
+                            maxLines = 1
+                        )
+                    }
+                }
             }
         }
     }
@@ -579,7 +805,7 @@ private fun ModelArchitectureInfoCard() {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "• Input Size: 224 × 224 × 3 RGB Tensor\n• CNN Layers: 3× Conv2D (32, 64, 64) + MaxPool + Dense\n• Backend: Python Flask API (0.0.0.0:5000/predict)\n• Multilingual: Dual English & Localized Urdu remedies",
+                text = "• Input Size: 224 × 224 × 3 RGB Tensor\n• CNN Layers: 3× Conv2D (32, 64, 64) + MaxPool + Dense\n• Backend: Python Flask API (0.0.0.0:5000/predict)\n• Database: Firebase Firestore Cloud Synchronization\n• Multilingual: Dual English & Localized Urdu remedies",
                 style = MaterialTheme.typography.bodySmall.copy(
                     lineHeight = 20.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -621,7 +847,7 @@ private fun StyledDeveloperFooter() {
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = AgriGreenPrimary.copy(alpha = 0.12f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, AgriGreenPrimary.copy(alpha = 0.3f))
+                border = BorderStroke(1.dp, AgriGreenPrimary.copy(alpha = 0.3f))
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

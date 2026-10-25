@@ -11,10 +11,10 @@ This project presents an intelligent, deep-learning-driven mobile and cloud back
 ---
 
 ## 🏗️ Architecture & Tech Stack
-- **Mobile Frontend (Flutter):** Dart, Material Design 3, `image_picker`, `http`.
+- **Mobile Frontend (Flutter & Android Native):** Dart / Kotlin Jetpack Compose, Material Design 3, `image_picker`, `http`, `coil`.
+- **Cloud Backend & Database (Firebase):** Firebase Authentication with Google Sign-In via Jetpack `CredentialManager`, Cloud Firestore Enterprise (`ai-studio-android-cropdoca-0d50fa60-6b0a-4667-9cc0-89cc455f5caf`) with Zero-Trust ABAC security rules.
 - **Backend API Bridge (Flask):** Python 3, Flask, CORS, PIL (Pillow), NumPy.
 - **Machine Learning (CNN):** TensorFlow / Keras Sequential Convolutional Neural Network (Conv2D × 3, MaxPooling2D, Dense 64, Softmax 4).
-- **Native Android Prototype (Jetpack Compose):** Kotlin, Material 3, Edge-to-Edge, FileProvider Camera, PickVisualMedia Photo Picker.
 
 ---
 

@@ -16,6 +16,7 @@ import com.example.ui.CropAppViewModel
 import com.example.ui.Screen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ResultScreen
+import com.example.ui.screens.SignInScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.theme.CropDocTheme
 
@@ -44,6 +45,12 @@ fun CropDoctorApp(viewModel: CropAppViewModel) {
         when (screen) {
             is Screen.Splash -> {
                 SplashScreen()
+            }
+            is Screen.SignIn -> {
+                SignInScreen(
+                    onSignInSuccess = { viewModel.navigateToHome() },
+                    onSkipSignIn = { viewModel.navigateToHome() }
+                )
             }
             is Screen.Home -> {
                 HomeScreen(uiState = uiState, viewModel = viewModel)

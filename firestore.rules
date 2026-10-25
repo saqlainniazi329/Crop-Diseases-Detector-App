@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.email is string && data.email.size() > 3 && data.email.size() <= 200 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 1000));
+    }
+
+    function isValidCropScan(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.cropType is string && data.cropType.size() > 0 && data.cropType.size() <= 50 &&
+             data.diseaseName is string && data.diseaseName in ['Bacterial Blight', 'Blast', 'Brown Spot', 'Healthy'] &&
+             data.diseaseNameUrdu is string && data.diseaseNameUrdu.size() > 0 && data.diseaseNameUrdu.size() <= 200 &&
+             data.confidence is number && data.confidence >= 0.0 && data.confidence <= 1.0 &&
+             data.severity is string && data.severity.size() > 0 && data.severity.size() <= 100 &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 2000));
+    }
+
+    // User Profile collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // User profiles should not be listed
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'email', 'displayName', 'createdAt']) &&
+                       incoming().keys().hasOnly(['userId', 'email', 'displayName', 'photoUrl', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'updatedAt']) &&
+                       (!('updatedAt' in incoming()) || (incoming().updatedAt is timestamp && incoming().updatedAt <= request.time)) &&
+                       isValidUserProfile(incoming());
+
+      allow delete: if isOwner(userId);
+
+      // Crop Scans Subcollection
+      match /scans/{scanId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(scanId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().id == scanId &&
+                         incoming().keys().hasAll(['id', 'userId', 'cropType', 'diseaseName', 'diseaseNameUrdu', 'confidence', 'severity', 'createdAt']) &&
+                         incoming().keys().hasOnly(['id', 'userId', 'cropType', 'diseaseName', 'diseaseNameUrdu', 'confidence', 'severity', 'notes', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidCropScan(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(scanId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().id == existing().id &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['notes', 'updatedAt']) &&
+                         (!('updatedAt' in incoming()) || (incoming().updatedAt is timestamp && incoming().updatedAt <= request.time)) &&
+                         isValidCropScan(incoming());
+
+        allow delete: if isOwner(userId) && isValidId(scanId);
+      }
+    }
+  }
+}
