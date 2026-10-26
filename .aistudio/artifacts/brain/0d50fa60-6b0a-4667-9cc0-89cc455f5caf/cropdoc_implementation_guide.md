@@ -1,44 +1,46 @@
-# CropDoc AI — AI-Based Crop & Orchard Tree Disease Detection and Remedy Recommendation System
-### BS Information Technology Final Year Project (FYP)
+# CropDoc AI — AI-Based Crop & Orchard Tree Botanical Disease Detection and Remedy Recommendation System
+### BS Information Technology Final Year Project 2026
 **The Islamia University of Bahawalpur (IUB)**  
 **Developer:** Saqlain Niazi
 
 ---
 
-## 🌟 Upgraded Capabilities (All Fruit Trees & Field Crops in Pakistan)
+## 🌟 Upgraded 2026 Botanical & Anti-Misguidance Capabilities
 
-1. **Comprehensive Species Coverage Across Pakistan:**
-   - **Orchard Trees:**
-     - 🥭 **Mango (آم کا درخت / باغ):** Mango Anthracnose (پتوں و کیری کا کالا دھبہ)
-     - 🍊 **Citrus / Kinnow (کنو و مالٹا):** Citrus Canker (پتوں اور پھل کا بیکٹیریائی کوڑھ)
-     - 🍈 **Guava (امرود کا درخت):** Guava Wilt (امرود کا سوکڑا - جڑ کا فنگس)
-     - 🍎 **Apple (سیب کا درخت):** Apple Scab (سیب کا خارش)
-   - **Field Crops:**
-     - 🌾 **Cotton (کپاس کی فصل):** Cotton Leaf Curl Virus (پتہ مروڑ وائرس - CLCuV)
-     - 🌾 **Wheat (گندم کی فصل):** Yellow Rust / Stripe Rust (پیلی کنگی)
-     - 🌾 **Rice Paddy (دھان / باسمتی چاول):** Rice Blast (جھونکا و گردن توڑ), Bacterial Blight, Brown Spot
-     - 🎋 **Sugarcane (کماد / گنا):** Red Rot (گنے کا کینسر / سرخ گلن)
-     - 🌿 **Healthy (صحت مند درخت / فصل):** Verified pest-free status
+1. **Two-Stage Hierarchical Botanical Vision Pipeline:**
+   - **Stage 1 (Anti-Misguidance Quality Guard):**
+     - Automatically verifies whether the input image contains authentic agricultural leaf foliage and vegetative chlorophyll signals (Green Leaf Index).
+     - If non-leaf objects (human faces, floors, inanimate objects, or random images) are provided, the system prevents diagnosis to protect the farmer:
+       > *"⚠️ غیر تصدیق شدہ یا نامعلوم نمونہ: کسان کو کسی غلط تشخیص یا غیر ضروری دوائی کے اخراجات سے بچانے کے لیے اسکین کا نتیجہ بلاک کر دیا گیا ہے۔"*
+   - **Stage 2 (Botanical Leaf Morphology & Plant Architecture):**
+     - Identifies the specific leaf structure before diagnosing pathology:
+       - **کپاس (Cotton):** Palmate 3-5 lobed leaf, reticulate venation.
+       - **گندم (Wheat):** Linear elongated blade, parallel veins.
+       - **دھان (Rice):** Rough lanceolate blade with central keel.
+       - **آم (Mango):** Oblong waxy leathery leaf with alternating pinnate veins.
+       - **کنو (Citrus/Kinnow):** Glossy oval leaf with distinct winged petiole and oil glands.
+       - **امرود (Guava):** Opposite paired elliptic leaves with prominent raised ribs.
+       - **کماد (Sugarcane):** Wide arching leaf with thick white midrib.
+       - **سیب (Apple):** Serrated ovate leaves.
 
-2. **Automated Urdu Voice Assistant (خودکار اردو آواز میں کسان کو رہنمائی):**
-   - Directly addresses the farmer by name upon detection:
-     > *"السلام علیکم پیارے کسان بھائی [نام]! آپ کے آم کے درخت کے پتے کے تجزیے کے بعد تشخیص ہوئی ہے: آم کا اینتھراکنوز۔ حکومتِ پاکستان کے منظور شدہ حل کے مطابق، نیٹیوو (Nativo 75 WG - Bayer) بحساب 65 گرام فی ایکڑ سپرے کریں۔ تنے کے گرد کھڑا پانی فوری نکالیں اور 10 سے 14 دن تک روزانہ معائنہ کریں۔"*
-   - Supported natively via Android `TextToSpeech` (`ur-PK`) and dynamic audio speech payload.
+2. **Precise Disease Location on Plant (بیماری پودے کے کس حصے پر واقع ہے):**
+   - Directly maps where the pathogen attacks:
+     - Cotton CLCuV: Underside of leaf (پتے کی نچلی سطح پر سفید مکھی کے ڈنک اور رگوں کا موٹا ہونا)
+     - Wheat Yellow Rust: Upper leaf surface in linear parallel stripe rows (پتے کی اوپری سطح پر لمبائی کے رخ پیلی دھاریاں)
+     - Mango Anthracnose: Leaf tip and margin necrotic dieback (پتے کی نوک، کناروں اور کیری کے ڈنڈل پر)
+     - Citrus Canker: Both upper and lower leaf surfaces with corky raised pustules and yellow halos
+     - Guava Wilt: Terminal branch leaf bronzing and vascular root browning
+     - Rice Blast: Spindle-shaped eye spots on leaf blade and panicle neck
 
-3. **Government of Pakistan (DPP & PARC) Approved Agrochemicals:**
-   - Official registered trade brand names and exact dosages per acre / 100L:
-     - **Bayer Nativo 75 WG** @ 65 g/acre
-     - **Syngenta Score 250 EC** @ 125 ml/100L water
-     - **Kocide 3000 Copper Hydroxide** @ 200–250 g/acre
-     - **Topsin-M 70 WP** @ 400 g root drench
-     - **Bayer Movento 240 SC** @ 125 ml/acre
-     - **Pyriproxyfen 10.8 EC** @ 500 ml/acre
-     - **Tilt 250 EC** @ 200 ml/acre
-     - **Beam 75 WP** @ 120 g/acre
+3. **Pakistani Farmer Visual Asset (کسان کی تصویر اور رہنمائی):**
+   - High-fidelity stylized Pakistani farmer hero graphic (`ic_pakistani_farmer`) integrated on the home dashboard with warm greetings ("خوش آمدید پیارے کسان بھائی!").
 
-4. **Dedicated Agronomic Advisory Modules:**
-   - 📅 **کتنے دن نگرانی کرنی چاہیے (Field Monitoring Timeline):** Specific quarantine and monitoring schedules.
-   - 💧 **پانی کی صورتحال (Irrigation & Water Guide):** Precise flood avoidance and moisture control directives.
+4. **Automated Natural Urdu Voice Assistant:**
+   - Mentions the farmer's name, speaks the botanical leaf structure, describes where the disease is located, prescribes Government of Pakistan (DPP & PARC) approved brands and dosages, gives irrigation guidance, and states the monitoring period.
+
+5. **Updated 2026 Academic Title:**
+   - Top Bar: **"IUB BS IT • Final Year Project 2026"**
+   - Bottom Footer: **"Developer: Saqlain Niazi (BS Information Technology • Islamia University of Bahawalpur - IUB 2026)"**
 
 ---
 
@@ -46,46 +48,46 @@
 
 | File | Description |
 |------|-------------|
-| **`flutter_main.dart`** | Complete, non-placeholder Flutter app (`lib/main.dart`) with camera, gallery, Urdu speech banner, and bold red diagnosis |
-| **`flutter_pubspec.yaml`** | Complete `pubspec.yaml` with `image_picker`, `http`, and Material 3 dependencies |
-| **`flask_backend_app.py`** | Python Flask REST API (`app.py`) on `0.0.0.0:5000` supporting all Pakistani trees & crops |
+| **`flutter_main.dart`** | Complete, non-placeholder Flutter app (`lib/main.dart`) with farmer hero, leaf morphology guide, and 2026 branding |
+| **`flask_backend_app.py`** | Python Flask REST API (`app.py`) on `0.0.0.0:5000` with 2-stage botanical vision heuristics and anti-misguidance quality guard |
 | **`cnn_model_train.py`** | Standalone TensorFlow/Keras CNN training pipeline (`train.py`) |
 | **`cropdoc_implementation_guide.md`** | Master documentation and installation manual |
+| **`flutter_pubspec.yaml`** | Complete `pubspec.yaml` with all required dependencies |
 
 ---
 
 ## 🏗️ Multi-Tier Architecture
 
 ```
-[ Orchard Tree / Crop Leaf Photo ]
-              │
-              ▼
+[ Crop Leaf Photo Taken in Field ]
+               │
+               ▼
 ┌────────────────────────────────────────────────────────┐
-│  Flutter / Android Native Frontend (CropDoc AI)       │
-│  • Modern Bio-Tech Leaf & Neural Network Adaptive Icon │
-│  • Live Automated Urdu Voice Assistant (TTS Engine)    │
-│  • Multi-Tree & Multi-Crop Visual Diagnostic Engine   │
-│  • Mandatory Bottom Footer: "Developer: Saqlain Niazi" │
-│  • Bold Red Disease Diagnosis + DPP Approved Remedies  │
-└──────────────────────────┬─────────────────────────────┘
-                           │
-             Multipart HTTP POST / Real Computer Vision
-                           │
-                           ▼
+│  Stage 1: Anti-Misguidance Quality Guard               │
+│  • Vegetative Chlorophyll / GLI Spectral Check         │
+│  • Rejects Non-Foliage Objects (Protects Farmer)       │
+└──────────────────────────────┬─────────────────────────┘
+                               │ (Valid Leaf Verified)
+                               ▼
 ┌────────────────────────────────────────────────────────┐
-│  Python Flask Server / Multi-Spectral Leaf Heuristics  │
-│  • Green Leaf Index (GLI) & Chlorosis Detection        │
-│  • Necrotic Lesion Edge-Entropy Analysis               │
-│  • Tree Bark & Foliage Texture Discrimination          │
-│  • Pakistan DPP & PARC Pesticide Recommendation DB    │
-│  • Dynamic Urdu Audio Narration Script Generation      │
-└──────────────────────────┬─────────────────────────────┘
-                           │
-                           ▼
+│  Stage 2: Botanical Leaf Morphology Classifier         │
+│  • Palmate (Cotton) vs Linear (Wheat/Rice)             │
+│  • Oblong Waxy (Mango) vs Winged Petiole (Citrus)      │
+│  • Opposite Elliptic (Guava)                           │
+└──────────────────────────────┬─────────────────────────┘
+                               │
+                               ▼
 ┌────────────────────────────────────────────────────────┐
-│  Firebase Cloud Firestore Backend (asia-southeast1)   │
-│  • Zero-Trust Security Rules: Users own their records  │
-│  • Real-Time Google Sign-In & Offline Local Cache      │
+│  Stage 3: Pathology Spectrum & Disease Symptom Locator │
+│  • Pinpoints Disease Location on Plant & Foliage       │
+│  • Pakistan DPP & PARC Approved Medicines + Dosages    │
+│  • Water/Irrigation Directives & Monitoring Days       │
+└──────────────────────────────┬─────────────────────────┘
+                               │
+                               ▼
+┌────────────────────────────────────────────────────────┐
+│  Stage 4: Automated Urdu Voice Assistant (TTS)         │
+│  • Speaks to Farmer by Name with Complete Treatment    │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -98,16 +100,17 @@
 pip install flask flask-cors pillow numpy tensorflow
 python app.py
 ```
-Server starts globally on `http://0.0.0.0:5000`.
+Server starts on `http://0.0.0.0:5000`.
 
-### 2. Running the Flutter App:
+### 2. Running the Flutter Frontend:
 ```bash
 flutter pub get
 flutter run
 ```
 
 ### 3. Developer & Academic Credits:
-- **Project Title:** AI-Based Crop Disease Detection and Remedy Recommendation Mobile Application
-- **Student & Developer:** Saqlain Niazi
+- **Project Title:** AI-Based Crop & Orchard Tree Disease Detection and Remedy Recommendation Mobile Application
+- **Year:** 2026
+- **Developer:** Saqlain Niazi
 - **Degree:** BS Information Technology
 - **Institution:** The Islamia University of Bahawalpur (IUB), Punjab, Pakistan

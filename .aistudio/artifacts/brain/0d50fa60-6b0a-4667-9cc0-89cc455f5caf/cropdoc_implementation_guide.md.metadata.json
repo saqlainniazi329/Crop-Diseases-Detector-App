@@ -1,5 +1,5 @@
 {
-  "summary":  "Master implementation and architecture guide for CropDoc AI updated with documentation for all Pakistani orchard trees (Mango, Citrus, Guava, Apple) and field crops (Cotton, Wheat, Rice, Sugarcane), automated Urdu Voice Assistant speaking directly to the farmer, DPP/PARC approved pesticides, irrigation directives, and field monitoring schedules.",
-  "updatedAt":  "2026-10-26T04:15:39.806036444Z",
+  "summary":  "Updated implementation guide for CropDoc AI (BS IT Final Year Project 2026, IUB) featuring Botanical Leaf Morphology classification, Anti-Misguidance validation guard, Plant Architecture & Disease Location mapping, Pakistani Farmer visual integration, and Government of Pakistan (DPP & PARC) approved remedies.",
+  "updatedAt":  "2026-10-26T04:47:22.746202096Z",
   "userFacing":  true
 }

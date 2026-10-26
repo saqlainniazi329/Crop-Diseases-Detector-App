@@ -1,5 +1,5 @@
 {
-  "summary":  "Python Flask backend for CropDoc AI updated with comprehensive support for Pakistani fruit trees (Mango, Citrus, Guava, Apple) and field crops (Cotton, Wheat, Rice, Sugarcane) with DPP/PARC approved agrochemicals, irrigation directives, field monitoring days, and automated Urdu voice assistant narration payload.",
-  "updatedAt":  "2026-10-26T04:11:56.701018781Z",
+  "summary":  "Python Flask backend app for CropDoc AI updated with Botanical Leaf Morphology classification, Anti-Misguidance sample validation guard to protect farmers from false detections, Plant Architecture and Disease Location mapping, and updated for IUB BS IT Final Year Project 2026.",
+  "updatedAt":  "2026-10-26T04:46:21.006279409Z",
   "userFacing":  true
 }

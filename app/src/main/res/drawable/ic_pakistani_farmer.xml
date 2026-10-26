@@ -1,0 +1,91 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+    <!-- Circular Background Shield -->
+    <path
+        android:fillColor="#E8F5E9"
+        android:pathData="M128,128m-120,0a120,120 0,1 1,240 0a120,120 0,1 1,-240 0" />
+    <path
+        android:fillColor="#C8E6C9"
+        android:pathData="M128,128m-112,0a112,112 0,1 1,224 0a112,112 0,1 1,-224 0" />
+
+    <!-- Lush Agricultural Field Backdrop -->
+    <path
+        android:fillColor="#81C784"
+        android:pathData="M16,160 Q80,135 140,165 T240,150 L240,240 L16,240 Z" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M16,180 Q90,160 160,185 T240,175 L240,240 L16,240 Z" />
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M16,205 Q100,190 180,210 T240,200 L240,240 L16,240 Z" />
+
+    <!-- Farmer Body / Traditional Kurta Shalwar Kameez -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M70,250 L85,175 Q128,160 171,175 L186,250 Z" />
+    <!-- Golden Waistcoat / Chadar -->
+    <path
+        android:fillColor="#F9A825"
+        android:pathData="M88,185 L108,250 L148,250 L168,185 Q128,172 88,185 Z" />
+
+    <!-- Neck -->
+    <path
+        android:fillColor="#FFCC80"
+        android:pathData="M116,155 L140,155 L142,175 L114,175 Z" />
+
+    <!-- Farmer Head / Face -->
+    <path
+        android:fillColor="#FFE0B2"
+        android:pathData="M128,110 C108,110 102,126 102,142 C102,160 114,168 128,168 C142,168 154,160 154,142 C154,126 148,110 128,110 Z" />
+
+    <!-- Friendly Mustache (Traditional Pakistani/Punjabi Moench) -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M112,148 Q120,144 128,149 Q136,144 144,148 Q152,154 156,151 Q148,158 128,153 Q108,158 100,151 Q104,154 112,148 Z" />
+
+    <!-- Eyes and Smile -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M114,134 A3,3 0 1,1 120,134 A3,3 0 1,1 114,134 Z" />
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M136,134 A3,3 0 1,1 142,134 A3,3 0 1,1 136,134 Z" />
+
+    <!-- Traditional Pagri / Turban (شملہ پگڑی) -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M96,118 Q128,95 160,118 Q168,105 158,95 Q145,85 128,85 Q111,85 98,95 Q88,105 96,118 Z" />
+    <!-- Turban Folds -->
+    <path
+        android:fillColor="#388E3C"
+        android:pathData="M98,105 Q128,88 158,105 Q150,92 128,92 Q106,92 98,105 Z" />
+    <!-- Turban Shimla (اونچا شملہ / کلغی) -->
+    <path
+        android:fillColor="#F9A825"
+        android:pathData="M120,86 L128,52 L136,86 Z" />
+    <path
+        android:fillColor="#F57F17"
+        android:pathData="M124,86 L128,58 L132,86 Z" />
+
+    <!-- Healthy Golden Wheat Spikes in Hand -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M165,160 Q185,130 195,100 Q192,115 180,140 Z" />
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M188,102 C194,98 198,105 192,112 C186,118 182,110 188,102 Z" />
+    <path
+        android:fillColor="#FFA000"
+        android:pathData="M182,115 C188,111 192,118 186,125 C180,131 176,123 182,115 Z" />
+
+    <!-- Green Crop Leaf Badge -->
+    <path
+        android:fillColor="#00C853"
+        android:pathData="M65,150 C65,130 85,120 100,120 C100,140 80,155 65,150 Z" />
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M70,145 C70,132 82,125 95,125 C95,138 83,149 70,145 Z" />
+</vector>

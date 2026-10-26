@@ -20,7 +20,6 @@ class UrduVoiceAssistant(context: Context) : TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            // Attempt to set Urdu (Pakistan) locale
             val urduPkLocale = Locale("ur", "PK")
             val urduLocale = Locale("ur")
 
@@ -33,7 +32,7 @@ class UrduVoiceAssistant(context: Context) : TextToSpeech.OnInitListener {
                 }
             }
 
-            tts?.setSpeechRate(0.92f) // Slightly slower, calm cadence for clear comprehension
+            tts?.setSpeechRate(0.92f) // Clear, respectful cadence for farmers
             tts?.setPitch(1.0f)
 
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -62,16 +61,21 @@ class UrduVoiceAssistant(context: Context) : TextToSpeech.OnInitListener {
     }
 
     /**
-     * Speaks the diagnosis to the farmer automatically with natural Urdu phrasing.
+     * Speaks the diagnosis to the farmer automatically with natural Urdu phrasing,
+     * including leaf morphology, disease location on the plant, and government remedies.
      */
     fun speakDiagnosis(
         farmerName: String,
         cropOrTreeName: String,
         diseaseNameUrdu: String,
         severityUrdu: String,
+        leafStructureUrdu: String,
+        diseaseLocationUrdu: String,
         approvedMedicineUrdu: String,
         waterStatusUrdu: String,
-        monitoringDaysUrdu: String
+        monitoringDaysUrdu: String,
+        isUnknownOrRejected: Boolean = false,
+        rejectionReasonUrdu: String = ""
     ) {
         val greeting = if (farmerName.isNotBlank() && farmerName != "Google User") {
             "السلام علیکم کسان بھائی $farmerName!"
@@ -79,14 +83,24 @@ class UrduVoiceAssistant(context: Context) : TextToSpeech.OnInitListener {
             "السلام علیکم پیارے کسان بھائی!"
         }
 
-        val speechText = """
-            $greeting
-            آپ کے $cropOrTreeName کا ڈیجیٹل معائنہ مکمل ہو چکا ہے۔
-            پودے میں $diseaseNameUrdu کی تشخیص ہوئی ہے۔ بیماری کی شدت $severityUrdu ہے۔
-            حکومتِ پاکستان اور محکمہ زراعت کی منظور شدہ ہدایت کے مطابق: $approvedMedicineUrdu
-            پانی کی صورتحال: $waterStatusUrdu
-            آئندہ $monitoringDaysUrdu تک فصل کی کڑی نگرانی رکھیں۔ اللہ تعالیٰ آپ کی فصل میں برکت عطا فرمائے۔
-        """.trimIndent()
+        val speechText = if (isUnknownOrRejected) {
+            """
+                $greeting
+                توجہ فرمائیں! آپ کی بھیجی گئی تصویر کسی منظور شدہ فصل یا درخت کے پتے سے مطابقت نہیں رکھتی۔
+                کسان کو کسی بھی غلط رہنمائی یا غلط دوائی کے نقصان سے بچانے کے لیے، سسٹم نے اس نتیجے کو روک دیا ہے۔
+                مہربانی فرما کر پودے کے پتے کی واضح تصویر دوبارہ کھینچیں۔ شکریہ۔
+            """.trimIndent()
+        } else {
+            """
+                $greeting
+                آپ کے $cropOrTreeName کا نباتاتی تجزیہ مکمل ہو چکا ہے۔
+                پتے کی ساخت: $leafStructureUrdu کی تصدیق ہوئی ہے۔
+                بیماری کی شناخت: $diseaseNameUrdu۔ یہ بیماری پودے کے اس حصے پر اثر انداز ہے: $diseaseLocationUrdu۔
+                حکومتِ پاکستان اور محکمہ زراعت کی منظور شدہ ہدایت کے مطابق: $approvedMedicineUrdu
+                آبپاشی کی صورتحال: $waterStatusUrdu
+                آئندہ $monitoringDaysUrdu تک باقاعدہ فیلڈ معائنہ جاری رکھیں۔ اللہ تعالیٰ آپ کی فصل میں برکت عطا فرمائے۔
+            """.trimIndent()
+        }
 
         speakText(speechText)
     }

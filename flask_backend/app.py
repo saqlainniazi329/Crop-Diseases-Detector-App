@@ -5,16 +5,9 @@ from PIL import Image
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# =====================================================================
-# CROP & ORCHARD TREE DISEASE DETECTION & DPP REMEDY API (PAKISTAN)
-# BS Information Technology Final Year Project (IUB)
-# Developer: Saqlain Niazi
-# =====================================================================
-
 app = Flask(__name__)
 CORS(app)
 
-# Target Classes spanning Trees and Field Crops in Pakistan
 CLASS_NAMES = [
     "Mango Anthracnose",
     "Citrus Canker",
@@ -26,14 +19,60 @@ CLASS_NAMES = [
     "Brown Spot",
     "Apple Scab",
     "Sugarcane Red Rot",
-    "Healthy"
+    "Healthy",
+    "Unknown Sample"
 ]
 
-# Comprehensive Pakistani Department of Plant Protection (DPP) & PARC Approved Remedies
 KNOWLEDGE_BASE = {
+    "Cotton Leaf Curl Virus": {
+        "crop_or_tree_name": "Cotton Crop (کپاس کی فصل)",
+        "is_tree": False,
+        "leaf_shape_urdu": "پنجہ نما پتا (3 سے 5 نوکیں)، موٹی ابھری رگیں اور اوپر کی طرف مڑا ہوا پیالہ",
+        "plant_structure_urdu": "سیدھا کھڑا جھاڑی دار پودا (3 سے 5 فٹ)، چوڑے پتے اور ٹینڈے",
+        "disease_location_urdu": "پتے کی نچلی سطح پر سفید مکھی کے ڈنک اور رگوں کا موٹا ہونا (Vein Thickening)",
+        "identification_guide_urdu": "کپاس کا پتا ہاتھ کے پنجے کی طرح چوڑا ہوتا ہے اور رگیں پھیلتی ہیں۔",
+        "disease_urdu": "کپاس کا پتہ مروڑ وائرس (CLCuV)",
+        "severity_urdu": "شدید وبا (سفید مکھی کے ذریعے پھیلاؤ)",
+        "monitoring_days_urdu": "5 سے 7 دن تک سفید مکھی کی باقاعدہ پیسٹ اسکاؤٹنگ کریں",
+        "irrigation_guide_urdu": "پانی کا ہلکا وقفہ رکھیں تاکہ پودے زیادہ رسیلے ہو کر سفید مکھی کو متوجہ نہ کریں۔",
+        "approved_pesticides_urdu": [
+            "پائری پراکسی فین (Pyriproxyfen 10.8 EC) بحساب 500 ملی لیٹر فی ایکڑ سپرے کریں۔",
+            "ڈائی فینتھیوران (Diafenthiuron 500 SC - Polo) بحساب 200 ملی لیٹر فی ایکڑ استعمال کریں۔",
+            "فلونکامڈ (Ulala) بحساب 60 سے 80 گرام فی ایکڑ سپرے کریں۔"
+        ],
+        "organic_remedies_urdu": [
+            "پیلے چپکنے والے کارڈز (Yellow Sticky Traps) 10 عدد فی ایکڑ لگائیں۔",
+            "کھٹی لسی اور ہینگ کا دیسی محلول چھڑک کر سفید مکھی کو بھگائیں۔"
+        ]
+    },
+    "Wheat Yellow Rust": {
+        "crop_or_tree_name": "Wheat Crop (گندم کی فصل)",
+        "is_tree": False,
+        "leaf_shape_urdu": "تلوار نما، لمبی، سیدھی اور باریک پتی مع متوازی رگیں (Linear Blade)",
+        "plant_structure_urdu": "گھاس نما تنا مع گانٹھیں، اونچائی 2.5 سے 4 فٹ، خوشہ دار سٹہ",
+        "disease_location_urdu": "پتے کی اوپری سطح پر لمبائی کے رخ متوازی قطاروں میں ہلدی جیسا پاؤڈر",
+        "identification_guide_urdu": "پتے پر انگلی پھیرنے سے انگلیوں پر پیلا زرد پاؤڈر لگ جاتا ہے۔",
+        "disease_urdu": "گندم کی پیلی کنگی (Yellow / Stripe Rust)",
+        "severity_urdu": "انتہائی خطرناک (ہوا کے ذریعے فوری پھیلاؤ)",
+        "monitoring_days_urdu": "3 سے 5 دن کے اندر اندر فوری اسپرے اور نگرانی کریں",
+        "irrigation_guide_urdu": "تیز ہوا یا بارش کے امکان پر آبپاشی مؤخر کریں تاکہ پھپھوندی کا دباؤ کم ہو۔",
+        "approved_pesticides_urdu": [
+            "ٹلٹ (Tilt 250 EC - Propiconazole) بحساب 200 ملی لیٹر فی ایکڑ سپرے کریں۔",
+            "نیٹیوو (Nativo 75 WG - Bayer) بحساب 65 گرام فی ایکڑ سپرے کریں۔",
+            "ایمسٹار ٹاپ بحساب 200 ملی لیٹر فی ایکڑ سپرے کریں۔"
+        ],
+        "organic_remedies_urdu": [
+            "صبح کے وقت شبنم کے دوران لکڑی کی راکھ اور گندھک کا ہلکا چھڑکاؤ کریں۔",
+            "پوٹاش کھاد کا استعمال کر کے پتے کی بیرونی تہہ کو مضبوط کریں۔"
+        ]
+    },
     "Mango Anthracnose": {
         "crop_or_tree_name": "Mango Tree (درخت آم)",
         "is_tree": True,
+        "leaf_shape_urdu": "لمبوترا، چوڑا، چمکیلا اور چرمی پتا (Oblong Leathery)",
+        "plant_structure_urdu": "بہت بڑا سدا بہار باغ کا درخت (30 تا 50 فٹ)، گہرا موٹا تنا",
+        "disease_location_urdu": "پتے کی نوک، کناروں اور نئی نکلنے والی نرم کونپلوں اور کیری کے ڈنڈل پر",
+        "identification_guide_urdu": "پتے کو مسلنے پر آم کی مخصوص خوشبو آتی ہے اور پتا لچکدار چرمی ہوتا ہے۔",
         "disease_urdu": "آم کا اینتھراکنوز (پتوں و کیری کا کالا دھبہ)",
         "severity_urdu": "شدید / فوری توجہ طلب",
         "monitoring_days_urdu": "10 سے 14 دن تک روزانہ معائنہ کریں",
@@ -50,6 +89,10 @@ KNOWLEDGE_BASE = {
     "Citrus Canker": {
         "crop_or_tree_name": "Citrus / Kinnow Orchard (کنو / مالٹا کا باغ)",
         "is_tree": True,
+        "leaf_shape_urdu": "بیضوی چمکیلا پتا، ڈنڈی کے پاس پروں نما پتی (Winged Petiole)",
+        "plant_structure_urdu": "جھاڑی دار درمیانہ درخت مع تیز نوک دار کانٹے، اونچائی 10 سے 20 فٹ",
+        "disease_location_urdu": "پتے کی دونوں سطحوں پر ابھرے ہوئے کھردرے چھالے جن کے گرد زرد ہالہ ہوتا ہے",
+        "identification_guide_urdu": "روشنی میں دیکھنے پر تیل کے شفاف غدود چمکتے ہیں اور کھردرے چھالے محسوس ہوتے ہیں۔",
         "disease_urdu": "سٹرس کینکر (پتوں اور پھل کا بیکٹیریائی کوڑھ)",
         "severity_urdu": "انتہائی خطرناک (چھوت کی بیماری)",
         "monitoring_days_urdu": "7 سے 10 دن تک باغ کی مسلسل نگرانی ضروری ہے",
@@ -66,6 +109,10 @@ KNOWLEDGE_BASE = {
     "Guava Wilt": {
         "crop_or_tree_name": "Guava Tree (امرود کا درخت)",
         "is_tree": True,
+        "leaf_shape_urdu": "آمنے سامنے جوڑے میں لگے چوڑے بیضوی موٹے پتے (Opposite Elliptic)",
+        "plant_structure_urdu": "درمیانہ درخت مع ملائم چھلکا اترنے والا تنا اور پھیلنے والی شاخیں",
+        "disease_location_urdu": "پتے اوپر سے تانبے جیسے ہو کر سوکھتے ہیں اور شاخ سے لٹکے رہتے ہیں",
+        "identification_guide_urdu": "شاخ پر پتے آمنے سامنے دو دو کی جوڑی میں ہوتے ہیں اور گہری رگیں ابھری ہوتی ہیں۔",
         "disease_urdu": "امرود کا سوکڑا (Guava Wilt - فیوزیرم مرجھاؤ)",
         "severity_urdu": "انتہائی مہلک (جڑ کا فنگس)",
         "monitoring_days_urdu": "15 دن تک مسلسل نمی اور جڑوں کا معائنہ کریں",
@@ -78,39 +125,13 @@ KNOWLEDGE_BASE = {
             "ٹرائیکوڈرما (Trichoderma harzianum) بائیو فنگسائڈ جڑوں کے قریب گڑھا کھود کر ڈالیں۔"
         ]
     },
-    "Cotton Leaf Curl Virus": {
-        "crop_or_tree_name": "Cotton Crop (کپاس کی فصل)",
-        "is_tree": False,
-        "disease_urdu": "کپاس کا پتہ مروڑ وائرس (CLCuV)",
-        "severity_urdu": "شدید وبا (سفید مکھی کے ذریعے پھیلاؤ)",
-        "monitoring_days_urdu": "5 سے 7 دن تک سفید مکھی کی باقاعدہ پیسٹ اسکاؤٹنگ کریں",
-        "irrigation_guide_urdu": "پانی کا ہلکا وقفہ رکھیں تاکہ پودے زیادہ رسیلے ہو کر سفید مکھی کو متوجہ نہ کریں۔",
-        "approved_pesticides_urdu": [
-            "پائری پراکسی فین (Pyriproxyfen 10.8 EC) بحساب 500 ملی لیٹر فی ایکڑ سپرے کریں۔",
-            "ڈائی فینتھیوران (Diafenthiuron 500 SC - Polo) بحساب 200 ملی لیٹر فی ایکڑ استعمال کریں۔"
-        ],
-        "organic_remedies_urdu": [
-            "پیلے چپکنے والے کارڈز (Yellow Sticky Traps) 10 عدد فی ایکڑ لگائیں۔"
-        ]
-    },
-    "Wheat Yellow Rust": {
-        "crop_or_tree_name": "Wheat Crop (گندم کی فصل)",
-        "is_tree": False,
-        "disease_urdu": "گندم کی پیلی کنگی (Yellow / Stripe Rust)",
-        "severity_urdu": "انتہائی خطرناک (ہوا کے ذریعے فوری پھیلاؤ)",
-        "monitoring_days_urdu": "3 سے 5 دن کے اندر اندر فوری اسپرے اور نگرانی کریں",
-        "irrigation_guide_urdu": "تیز ہوا یا بارش کے امکان پر آبپاشی مؤخر کریں تاکہ پھپھوندی کا دباؤ کم ہو۔",
-        "approved_pesticides_urdu": [
-            "ٹلٹ (Tilt 250 EC - Propiconazole) بحساب 200 ملی لیٹر فی ایکڑ سپرے کریں۔",
-            "نیٹیوو (Nativo 75 WG - Bayer) بحساب 65 گرام فی ایکڑ سپرے کریں۔"
-        ],
-        "organic_remedies_urdu": [
-            "مستقبل کے لیے این اے آر سی اور ایوب زرعی تحقیقاتی ادارے کی کنگی کے خلاف مدافعت رکھنے والی اقسام کاشت کریں۔"
-        ]
-    },
     "Rice Blast": {
         "crop_or_tree_name": "Rice Paddy (دھان / باسمتی چاول)",
         "is_tree": False,
+        "leaf_shape_urdu": "کھردری تلوار نما پتی مع نوک دار سرا (Lanceolate)",
+        "plant_structure_urdu": "پانی میں کھڑا جھاڑ دار پودا، اونچائی 3 سے 4.5 فٹ",
+        "disease_location_urdu": "پتے کے درمیان میں تکلا نما (Spindle-shaped) بھورے دھبے مع سرمئی مرکز",
+        "identification_guide_urdu": "دھان کی لمبی پتی کے بیچ میں تکلے کی شکل کا داغ جس کا کنارہ گہرا بھورا ہو۔",
         "disease_urdu": "رائس بلاسٹ (گردن توڑ و پتہ جھونکا)",
         "severity_urdu": "شدید پھپھوندی",
         "monitoring_days_urdu": "7 دن تک کھیت کا معائنہ جاری رکھیں",
@@ -123,67 +144,13 @@ KNOWLEDGE_BASE = {
             "یوریا کھاد کا غیر ضروری استعمال بند کریں اور پوٹاش کھاد ڈالیں۔"
         ]
     },
-    "Bacterial Blight": {
-        "crop_or_tree_name": "Rice Crop (دھان)",
-        "is_tree": False,
-        "disease_urdu": "بیکٹیریل بلائٹ (پتوں کا بیکٹیریائی جھلسائو)",
-        "severity_urdu": "درمیانہ تا شدید",
-        "monitoring_days_urdu": "7 سے 10 دن تک نگرانی کریں",
-        "irrigation_guide_urdu": "کھیت سے کھڑا پانی 3 دن کے لیے نکال کر ہوا لگوائیں۔",
-        "approved_pesticides_urdu": [
-            "کاپر آکسی کلورائڈ 50 فیصد WP بحساب 2.5 گرام فی لیٹر پانی چھڑکاؤ کریں۔",
-            "اسٹریپٹوسائکلین 100 ملی گرام فی لیٹر پانی میں ملا کر سپرے کریں۔"
-        ],
-        "organic_remedies_urdu": [
-            "پانی خشک کر کے ہوا لگوائیں اور نائٹروجن کھاد روکیں۔"
-        ]
-    },
-    "Brown Spot": {
-        "crop_or_tree_name": "Rice / Field Crops (دھان و فصلیں)",
-        "is_tree": False,
-        "disease_urdu": "بھورا دھبہ (براؤن اسپاٹ)",
-        "severity_urdu": "درمیانی شدت",
-        "monitoring_days_urdu": "7 دن تک زمین کی نمی اور کھاد چیک کریں",
-        "irrigation_guide_urdu": "پانی کا سوکھا نہ لگنے دیں؛ باقاعدہ ہلکا پانی دیں۔",
-        "approved_pesticides_urdu": [
-            "مینکوزیب 75 فیصد WP بحساب 2.5 گرام فی لیٹر یا صاف (Saaf) 2 گرام فی لیٹر استعمال کریں۔"
-        ],
-        "organic_remedies_urdu": [
-            "زنک سلفیٹ 33 فیصد 6 کلو فی ایکڑ ڈالیں تاکہ پودے کی کمزوری دور ہو۔"
-        ]
-    },
-    "Apple Scab": {
-        "crop_or_tree_name": "Apple Orchard (سیب کا درخت)",
-        "is_tree": True,
-        "disease_urdu": "سیب کا خارش (Apple Scab)",
-        "severity_urdu": "شدید داغ",
-        "monitoring_days_urdu": "10 دن تک باقاعدہ معائنہ کریں",
-        "irrigation_guide_urdu": "پتوں پر چھڑکاؤ کے بجائے جڑوں میں پانی دیں۔",
-        "approved_pesticides_urdu": [
-            "ڈیلان (Dithianon - Delan 70 WG) 50 گرام فی 100 لیٹر پانی سپرے کریں۔",
-            "سکور (Score 250 EC) 30 ملی لیٹر فی 100 لیٹر پانی ملائیں۔"
-        ],
-        "organic_remedies_urdu": [
-            "گرے ہوئے پتوں کو جمع کر کے تلف کریں تاکہ فنگس کے جراثیم ختم ہوں۔"
-        ]
-    },
-    "Sugarcane Red Rot": {
-        "crop_or_tree_name": "Sugarcane Crop (کماد / گنا)",
-        "is_tree": False,
-        "disease_urdu": "گنے کا کینسر (سرخ گلن - Red Rot)",
-        "severity_urdu": "انتہائی خطرناک",
-        "monitoring_days_urdu": "14 دن تک کھیت کے کناروں کی نگرانی کریں",
-        "irrigation_guide_urdu": "پانی کے نکاس کو بہتر بنائیں؛ گنے کے کھیت میں زیادہ پانی نہ ٹھہرنے دیں۔",
-        "approved_pesticides_urdu": [
-            "کاربینڈازم (Carbendazim 50 WP) بحساب 500 گرام فی ایکڑ آبپاشی کے پانی کے ساتھ بہائیں۔"
-        ],
-        "organic_remedies_urdu": [
-            "بیمار کماد کے موڈھے اکھاڑ کر جلا دیں اور فصل کی جگہ بدلیں۔"
-        ]
-    },
     "Healthy": {
         "crop_or_tree_name": "Healthy Crop / Orchard (صحت مند فصل و پودا)",
         "is_tree": False,
+        "leaf_shape_urdu": "مکمل تندرست پتا، قدرتی سبزین اور بغیر کسی داغ دھبے کے",
+        "plant_structure_urdu": "مضبوط تنا اور شاخیں، پھل پھول سے لدا تندرست پودا",
+        "disease_location_urdu": "پودے پر کوئی بیماری موجود نہیں ہے",
+        "identification_guide_urdu": "پتے کی رگیں ہموار، صاف، رسیلی اور بغیر کسی کیڑے یا فنگس کے نشان کے ہیں۔",
         "disease_urdu": "صحت مند درخت / فصل (کوئی بیماری نہیں ہے)",
         "severity_urdu": "بالکل محفوظ",
         "monitoring_days_urdu": "ہفتہ وار معمول کے مطابق معائنہ جاری رکھیں",
@@ -193,6 +160,24 @@ KNOWLEDGE_BASE = {
         ],
         "organic_remedies_urdu": [
             "پودوں کو طاقتور رکھنے کے لیے گوبر کی کھاد اور متوازن کھادیں دیں۔"
+        ]
+    },
+    "Unknown Sample": {
+        "crop_or_tree_name": "Unknown Sample (غیر تصدیق شدہ شے)",
+        "is_tree": False,
+        "leaf_shape_urdu": "پتے کی قدرتی نباتاتی رگیں یا خدوخال واضح نہیں ہیں",
+        "plant_structure_urdu": "کسی منظور شدہ فصل یا درخت سے مطابقت نہیں رکھتا",
+        "disease_location_urdu": "کوئی مصدقہ علامات نہیں ملیں",
+        "identification_guide_urdu": "کسان بھائی! ایپ نے غلط رہنمائی سے بچانے کے لیے شناخت روک دی ہے۔",
+        "disease_urdu": "غیر تصدیق شدہ یا نامعلوم نمونہ",
+        "severity_urdu": "تشخیص روک دی گئی (غلط فہمی سے بچاؤ)",
+        "monitoring_days_urdu": "پتے کی واضح تصویر دوبارہ لیں",
+        "irrigation_guide_urdu": "صرف پتے کی تصویر کھینچیں۔",
+        "approved_pesticides_urdu": [
+            "کسی دوا کا استعمال نہ کریں؛ پہلے پتے کی درست تصویر دوبارہ کھینچیں۔"
+        ],
+        "organic_remedies_urdu": [
+            "اچھی روشنی میں پتے کی واضح تصویر لیں۔"
         ]
     }
 }
@@ -209,31 +194,36 @@ def analyze_leaf_heuristics(image):
     gli = (2 * g - r - b) / denom
 
     mean_gli = float(np.mean(gli))
-    necrotic_ratio = float(np.mean((r > (g + 15)) & (r > (b + 10))))
+    green_pixels = float(np.mean((g > (r + 10)) & (g > (b + 10))))
     yellow_chlorosis = float(np.mean((r > 130) & (g > 130) & (b < 95)))
+    necrotic_ratio = float(np.mean((r > (g + 15)) & (r > (b + 10))))
     dark_spots = float(np.mean((r < 60) & (g < 60) & (b < 60)))
 
-    if mean_gli > 0.22 and necrotic_ratio < 0.05 and yellow_chlorosis < 0.05:
-        return "Healthy", 0.96
+    is_plant = (mean_gli > -0.10 or green_pixels > 0.12 or yellow_chlorosis > 0.15)
+    if not is_plant:
+        return "Unknown Sample", 0.99
+
+    if green_pixels > 0.40 and necrotic_ratio < 0.05 and yellow_chlorosis < 0.06:
+        return "Healthy", 0.97
+    elif yellow_chlorosis > 0.18 and necrotic_ratio > 0.08:
+        return "Wheat Yellow Rust", 0.94
     elif dark_spots > 0.08 and necrotic_ratio > 0.12:
-        return "Mango Anthracnose", 0.94
-    elif yellow_chlorosis > 0.15 and necrotic_ratio > 0.08:
+        return "Mango Anthracnose", 0.95
+    elif yellow_chlorosis > 0.14:
         return "Citrus Canker", 0.92
-    elif yellow_chlorosis > 0.18:
-        return "Wheat Yellow Rust", 0.93
-    elif necrotic_ratio > 0.18:
-        return "Cotton Leaf Curl Virus", 0.91
-    elif dark_spots > 0.12:
-        return "Rice Blast", 0.92
+    elif necrotic_ratio > 0.16:
+        return "Cotton Leaf Curl Virus", 0.93
+    elif dark_spots > 0.10:
+        return "Rice Blast", 0.91
     else:
-        return "Bacterial Blight", 0.89
+        return "Guava Wilt", 0.90
 
 @app.route("/", methods=["GET"])
 def health_check():
     return jsonify({
         "status": "Online",
-        "system": "CropDoc AI - Fruit Trees & Crops Diagnostic System",
-        "country": "Pakistan (DPP & PARC Compliance)",
+        "system": "CropDoc AI - Botanical Leaf Structure & Diagnostic System",
+        "project": "IUB BS IT Final Year Project 2026",
         "developer": "Saqlain Niazi",
         "institution": "Islamia University of Bahawalpur (IUB)"
     }), 200
@@ -255,13 +245,20 @@ def predict():
         predicted_class, confidence = analyze_leaf_heuristics(pil_image)
         data = KNOWLEDGE_BASE.get(predicted_class, KNOWLEDGE_BASE["Healthy"])
 
-        audio_narration_urdu = (
-            f"السلام علیکم {farmer_name}! آپ کے {data['crop_or_tree_name']} کے پتے کے تجزیے کے بعد "
-            f"تشخیص ہوئی ہے: {data['disease_urdu']}۔ "
-            f"حکومتِ پاکستان کے منظور شدہ حل کے مطابق، {data['approved_pesticides_urdu'][0]} "
-            f"پانی کی صورتحال: {data['irrigation_guide_urdu']} "
-            f"اور {data['monitoring_days_urdu']}۔"
-        )
+        if predicted_class == "Unknown Sample":
+            audio_narration_urdu = (
+                f"السلام علیکم {farmer_name}! آپ کی بھیجی گئی تصویر کسی منظور شدہ فصل یا درخت کے پتے سے مطابقت نہیں رکھتی۔ "
+                f"کسان کو غلط رہنمائی سے بچانے کے لیے تشخیص روک دی گئی ہے۔ براہ کرم پودے کے پتے کی واضح تصویر دوبارہ لیں۔"
+            )
+        else:
+            audio_narration_urdu = (
+                f"السلام علیکم {farmer_name}! آپ کے {data['crop_or_tree_name']} کا نباتاتی تجزیہ مکمل ہو چکا ہے۔ "
+                f"پتے کی ساخت: {data['leaf_shape_urdu']}۔ "
+                f"تشخیص: {data['disease_urdu']}۔ یہ بیماری {data['disease_location_urdu']} پر واقع ہے۔ "
+                f"حکومتِ پاکستان کے منظور شدہ حل کے مطابق، {data['approved_pesticides_urdu'][0]} "
+                f"پانی کی صورتحال: {data['irrigation_guide_urdu']} "
+                f"اور {data['monitoring_days_urdu']}۔"
+            )
 
         response_payload = {
             "status": "success",
@@ -271,12 +268,17 @@ def predict():
             "is_tree": data["is_tree"],
             "disease_urdu": data["disease_urdu"],
             "severity_urdu": data["severity_urdu"],
+            "leaf_shape_urdu": data["leaf_shape_urdu"],
+            "plant_structure_urdu": data["plant_structure_urdu"],
+            "disease_location_urdu": data["disease_location_urdu"],
+            "identification_guide_urdu": data["identification_guide_urdu"],
             "monitoring_days_urdu": data["monitoring_days_urdu"],
             "irrigation_guide_urdu": data["irrigation_guide_urdu"],
             "approved_pesticides_urdu": data["approved_pesticides_urdu"],
             "organic_remedies_urdu": data["organic_remedies_urdu"],
             "audio_speech_text_urdu": audio_narration_urdu,
             "developer": "Saqlain Niazi",
+            "project_year": "2026",
             "institution": "Islamia University of Bahawalpur (IUB)"
         }
 

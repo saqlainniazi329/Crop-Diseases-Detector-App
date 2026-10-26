@@ -10,9 +10,11 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +45,19 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.draw.clip
+import coil.compose.AsyncImage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -57,6 +71,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,13 +80,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -78,7 +97,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.credentials.CredentialManager
+import com.example.R
 import com.example.data.model.CropScanEntity
+import com.example.model.CropDiseaseKnowledgeBase
+import com.example.model.PlantBotanicalProfile
 import com.example.ui.CropAppViewModel
 import com.example.ui.CropUiState
 import com.example.ui.auth.AuthManager
@@ -101,8 +123,15 @@ fun HomeScreen(
     val credentialManager = remember { CredentialManager.create(context) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
-    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var tempCameraUri by rememberSaveable { mutableStateOf<String?>(null) }
     var serverInput by remember { mutableStateOf(uiState.serverUrl) }
+    var editableFarmerName by remember(uiState.farmerProfileName) { mutableStateOf(uiState.farmerProfileName) }
+
+    val profilePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.updateProfilePicture(it) }
+    }
 
     // Photo Gallery Picker Launcher (Google Play Policy Compliant: PickVisualMedia)
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -111,12 +140,24 @@ fun HomeScreen(
         uri?.let { viewModel.onImageSelected(it) }
     }
 
-    // Camera Capture Launcher
+    // Camera Capture Launcher with [HARDWARE_BRIDGE: SECURE_CAMERA_STREAM]
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success: Boolean ->
-        if (success && tempCameraUri != null) {
-            viewModel.onImageSelected(tempCameraUri!!)
+        val uri = tempCameraUri?.let { Uri.parse(it) } ?: viewModel.getPendingCameraUri()
+        if (success && uri != null) {
+            viewModel.onImageSelected(uri)
+        } else {
+            // [CATCH_ERROR: FALLBACK_TO_GALLERY_PICKER]
+            viewModel.onCameraCaptureFailed()
+            val fallbackNotice = if (uiState.appCurrentLang == "EN")
+                "Camera capture interrupted. [CATCH_ERROR: FALLBACK_TO_GALLERY_PICKER] safely launched."
+            else
+                "کیمرہ ایرر! [CATCH_ERROR: FALLBACK_TO_GALLERY_PICKER] محفوظ گیلری پکر فعال کر دیا گیا ہے۔"
+            Toast.makeText(context, fallbackNotice, Toast.LENGTH_LONG).show()
+            galleryLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
         }
     }
 
@@ -125,30 +166,63 @@ fun HomeScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            val file = viewModel.createTempPictureFile()
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                file
-            )
-            tempCameraUri = uri
-            cameraLauncher.launch(uri)
+            try {
+                val file = viewModel.createTempPictureFile()
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.provider",
+                    file
+                )
+                tempCameraUri = uri.toString()
+                viewModel.setPendingCameraUri(uri)
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                viewModel.onCameraCaptureFailed()
+                val fallbackNotice = if (uiState.appCurrentLang == "EN")
+                    "Camera initialization error! Falling back to Gallery."
+                else
+                    "کیمرہ شروع کرنے میں خرابی! گیلری پکر محفوظ طریقہ سے شروع ہو رہا ہے۔"
+                Toast.makeText(context, fallbackNotice, Toast.LENGTH_LONG).show()
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
         } else {
-            Toast.makeText(context, "Camera permission is required to capture crop leaf photo", Toast.LENGTH_LONG).show()
+            val permDeniedMsg = if (uiState.appCurrentLang == "EN")
+                "Camera permission required. Falling back to Gallery picker."
+            else
+                "پودے کے پتے کی تصویر کے لیے کیمرے کی اجازت ضروری ہے۔ گیلری سے منتخب کریں۔"
+            Toast.makeText(context, permDeniedMsg, Toast.LENGTH_LONG).show()
+            galleryLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
         }
     }
 
     fun launchCamera() {
         val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
         if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-            val file = viewModel.createTempPictureFile()
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                file
-            )
-            tempCameraUri = uri
-            cameraLauncher.launch(uri)
+            try {
+                val file = viewModel.createTempPictureFile()
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.provider",
+                    file
+                )
+                tempCameraUri = uri.toString()
+                viewModel.setPendingCameraUri(uri)
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                viewModel.onCameraCaptureFailed()
+                val fallbackNotice = if (uiState.appCurrentLang == "EN")
+                    "Camera hardware issue! Safely opening Gallery picker."
+                else
+                    "کیمرہ کھولنے میں خرابی! محفوظ گیلری پکر کھولا جا رہا ہے۔"
+                Toast.makeText(context, fallbackNotice, Toast.LENGTH_LONG).show()
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
         } else {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
@@ -165,14 +239,18 @@ fun HomeScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Top App Bar Header with Auth Status & Settings
+            // Top App Bar Header with Auth Status, Language Switcher & Settings
             HomeTopBar(
                 currentUser = uiState.currentUser,
-                onSignInClick = { viewModel.navigateToSignIn() },
-                onProfileClick = { showSignOutDialog = true },
+                isPhoneVerified = uiState.isPhoneVerified,
+                verifiedPhone = uiState.verifiedPhoneNumber,
+                selectedLanguage = uiState.selectedLanguage,
+                onLanguageClick = { viewModel.toggleLanguageSelector(true) },
+                onSignInClick = { viewModel.openAuthModal(0) },
+                onProfileClick = { viewModel.openSettings() },
                 onSettingsClick = {
                     serverInput = uiState.serverUrl
-                    showSettingsDialog = true
+                    viewModel.openSettings()
                 }
             )
 
@@ -184,14 +262,30 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // LEVEL 1: WELCOME BANNER ("Welcome Kisan / خوش آمدید کسان")
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
-                    HeroWelcomeCard(currentUser = uiState.currentUser)
+                    HeroWelcomeCard(
+                        currentUser = uiState.currentUser,
+                        isPhoneVerified = uiState.isPhoneVerified,
+                        verifiedPhone = uiState.verifiedPhoneNumber,
+                        appCurrentLang = uiState.appCurrentLang
+                    )
                 }
 
+                // LEVEL 3: LIVE SENSORS & GOOGLE WEATHER RECKONING
+                item {
+                    LiveSensorsWeatherCard(
+                        uiState = uiState,
+                        onRefresh = { viewModel.refreshGpsAndWeather() },
+                        onExpandWeather = { viewModel.openWeatherDetailsModal() }
+                    )
+                }
+
+                // LEVEL 4: HIGH-PRECISION LEAF & PLANT DETECTION (CAMERA + GALLERY)
                 item {
                     Text(
-                        text = "Instant Crop Diagnosis",
+                        text = "Instant Crop & Tree Leaf Diagnosis",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -318,6 +412,11 @@ fun HomeScreen(
                     SupportedDiseasesSection()
                 }
 
+                // Botanical Plant & Leaf Anatomy Guide (ہر پودے اور پتے کی ساخت، ساخت اور بیماری کا مقام)
+                item {
+                    BotanicalPlantLeafGuideSection()
+                }
+
                 // AI Model Pipeline Architecture Card
                 item {
                     ModelArchitectureInfoCard()
@@ -371,69 +470,377 @@ fun HomeScreen(
         }
     }
 
-    // Sign Out Confirmation Dialog
-    if (showSignOutDialog) {
+    // LEVEL 1: LANGUAGE SELECTION DIALOG [SYSTEM_ACTION: DISPLAY_LANGUAGE_SELECTION]
+    if (uiState.isLanguageSelectorOpen) {
         AlertDialog(
-            onDismissRequest = { showSignOutDialog = false },
-            title = { Text("Account Profile") },
+            onDismissRequest = { viewModel.toggleLanguageSelector(false) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Language, contentDescription = null, tint = AgriGreenPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Select Language / زبان کا انتخاب", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            },
             text = {
-                Column {
-                    Text("Signed in as:")
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = uiState.currentUser?.email ?: "Google User",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.padding(top = 4.dp)
+                        text = "براہ کرم اپنی پسندیدہ زبان منتخب کریں:",
+                        style = MaterialTheme.typography.bodyMedium
                     )
-                    Text(
-                        text = "Your crop diagnosis history is securely synchronized to Firebase Firestore in real-time.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline),
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSignOutDialog = false
-                        AuthManager.signOut(
-                            credentialManager = credentialManager,
-                            onSignOutComplete = {},
-                            scope = coroutineScope
-                        )
+                    OutlinedButton(
+                        onClick = { viewModel.selectLanguage("اردو") },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = if (uiState.selectedLanguage == "اردو") ButtonDefaults.outlinedButtonColors(containerColor = AgriGreenPrimary.copy(alpha = 0.15f)) else ButtonDefaults.outlinedButtonColors()
+                    ) {
+                        Text("اردو (Urdu) - تجویز کردہ برائے کسان", fontWeight = FontWeight.Bold)
                     }
-                ) {
-                    Text("Sign Out", color = AgriRedDisease)
+                    OutlinedButton(
+                        onClick = { viewModel.selectLanguage("English") },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = if (uiState.selectedLanguage == "English") ButtonDefaults.outlinedButtonColors(containerColor = AgriGreenPrimary.copy(alpha = 0.15f)) else ButtonDefaults.outlinedButtonColors()
+                    ) {
+                        Text("English (Dual Botanical Mode)", fontWeight = FontWeight.Bold)
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showSignOutDialog = false }) {
-                    Text("Close")
+                TextButton(onClick = { viewModel.toggleLanguageSelector(false) }) {
+                    Text("بند کریں / Close")
                 }
             }
         )
     }
 
-    // Backend Flask Settings Dialog
-    if (showSettingsDialog) {
+    // LEVEL 2: ADVANCED AUTHENTICATION MODAL [SYSTEM_ACTION: SHOW_AUTHENTICATION_SCREEN]
+    if (uiState.showAuthModal) {
         AlertDialog(
-            onDismissRequest = { showSettingsDialog = false },
+            onDismissRequest = { viewModel.closeAuthModal() },
             title = {
-                Text(
-                    text = "Flask Backend Configuration",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = AgriGreenPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("کسان تصدیق و رجسٹریشن (Onboarding)", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                }
             },
             text = {
                 Column {
-                    Text(
-                        text = "Set Python Flask API endpoint. For Android Emulator use 10.0.2.2:5000, or your PC local IP for physical devices.",
-                        style = MaterialTheme.typography.bodySmall
+                    TabRow(
+                        selectedTabIndex = uiState.selectedAuthTab,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = AgriGreenPrimary
+                    ) {
+                        Tab(
+                            selected = uiState.selectedAuthTab == 0,
+                            onClick = { viewModel.setAuthTab(0) },
+                            text = { Text("📱 فون نمبر / OTP", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                        )
+                        Tab(
+                            selected = uiState.selectedAuthTab == 1,
+                            onClick = { viewModel.setAuthTab(1) },
+                            text = { Text("🌐 گوگل اکاؤنٹ", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    if (uiState.selectedAuthTab == 0) {
+                        // Path A: Pakistani Mobile Phone Number Verification via SMS OTP
+                        Text(
+                            text = "پاکستانی کسان بھائی اپنا موبائل نمبر درج کریں تاکہ 4 یا 6 ہندسوں کا OTP ایس ایم ایس بھیجا جا سکے۔",
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = uiState.phoneNumberInput,
+                            onValueChange = { viewModel.updatePhoneNumber(it) },
+                            label = { Text("موبائل نمبر (03001234567 یا 92300...)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(Icons.Default.PhoneAndroid, contentDescription = null, tint = AgriGreenPrimary)
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        if (!uiState.isOtpSent) {
+                            Button(
+                                onClick = { viewModel.sendOtpSms() },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AgriGreenPrimary),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = !uiState.isOtpSending
+                            ) {
+                                if (uiState.isOtpSending) {
+                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Text("📩 [SEND_OTP_SMS] کوڈ بھیجیں", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        } else {
+                            Surface(
+                                color = AgriHealthyGreen.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "✅ تصدیقی کوڈ ایس ایم ایس کے ذریعے بھیج دیا گیا ہے!",
+                                    style = MaterialTheme.typography.labelSmall.copy(color = AgriHealthyGreen, fontWeight = FontWeight.Bold),
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = uiState.otpCodeInput,
+                                onValueChange = { viewModel.updateOtpCode(it) },
+                                label = { Text("4 یا 6 ہندسوں کا OTP کوڈ درج کریں") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Button(
+                                onClick = { viewModel.verifyOtpCode() },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AgriGreenPrimary),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = !uiState.isOtpSending
+                            ) {
+                                if (uiState.isOtpSending) {
+                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Text("🔐 تصدیق کریں اور لاگ ان ہوں", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        if (uiState.otpError != null) {
+                            Text(
+                                text = uiState.otpError!!,
+                                color = AgriRedDisease,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    } else {
+                        // Path B: Google Sign In
+                        Text(
+                            text = "اپنے آفیشل گوگل (Gmail) اکاؤنٹ کے ذریعے فوری لاگ ان کریں تاکہ بیماریوں کا کلاؤڈ ریکارڈ محفوظ رہے۔",
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                viewModel.closeAuthModal()
+                                AuthManager.onGoogleSignInClicked(
+                                    context = context,
+                                    credentialManager = credentialManager,
+                                    onAuthSuccess = {
+                                        Toast.makeText(context, "گوگل اکاؤنٹ سے کامیابی کے ساتھ لاگ ان ہو گئے!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onAuthError = { error ->
+                                        Toast.makeText(context, "Sign-in error: $error", Toast.LENGTH_SHORT).show()
+                                    },
+                                    scope = coroutineScope
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Google Gmail سے لاگ ان کریں", fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.closeAuthModal() }) {
+                    Text("منسوخ کریں / Cancel")
+                }
+            }
+        )
+    }
+
+    // LEVEL 2: PERSISTENT ULTRA SETTINGS MENU [SYSTEM_ACTION: LAUNCH_ULTRA_SETTINGS]
+    if (uiState.showSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.closeSettings() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Settings, contentDescription = null, tint = AgriGreenPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text("سیٹنگز و کسان پروفائل (Ultra Settings)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("[SYSTEM_ACTION: LAUNCH_ULTRA_SETTINGS]", fontSize = 9.sp, color = AgriGreenPrimary, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Farmer Profile & Live Photo Editor
+                    Surface(
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .border(2.dp, AgriGreenPrimary, CircleShape)
+                                    .clickable {
+                                        profilePhotoLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (uiState.farmerProfileImageUri != null) {
+                                    AsyncImage(
+                                        model = uiState.farmerProfileImageUri,
+                                        contentDescription = "Profile Photo",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_pakistani_farmer),
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = uiState.farmerProfileName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF1B5E20)
+                                )
+                                TextButton(
+                                    onClick = {
+                                        profilePhotoLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                                ) {
+                                    Text("📸 تصویر تبدیل کریں (Update Photo)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AgriGreenPrimary)
+                                }
+                            }
+                        }
+                    }
+
+                    // Editable Profile Name
+                    OutlinedTextField(
+                        value = editableFarmerName,
+                        onValueChange = { editableFarmerName = it },
+                        label = { Text("کسان کا نام (Profile Name)") },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = AgriGreenPrimary) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // ENTERTAINMENT SHUNT: LUDO KISAN CORE [SYSTEM_ACTION: BOOT_LUDO_KISAN_CORE]
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBE7)),
+                        border = BorderStroke(1.5.dp, Color(0xFF33691E))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.SportsEsports, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text("انٹرٹینمنٹ شنٹ: لڈو کسان پرو", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = Color(0xFF1B5E20))
+                                    Text("[SYSTEM_ACTION: BOOT_LUDO_KISAN_CORE]", fontSize = 8.sp, color = Color(0xFF33691E), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "3 فعال موڈز: کمپیوٹر AI، 2 کھلاڑی اور 4 کھلاڑی جٹ-جٹ الائنس اتحاد!",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, color = Color(0xFF33691E))
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    viewModel.closeSettings()
+                                    viewModel.openLudoKisan()
+                                },
+                                modifier = Modifier.fillMaxWidth().height(42.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                            ) {
+                                Text("🎲 لڈو گیم شروع کریں (Play Ludo)", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                            }
+                        }
+                    }
+
+                    // App Telemetry, Diagnostics & Legal Compliance
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("📱 ایپ ٹیلی میٹری و قانونی تصدیق:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                            Text("• CropDoc AI ورژن: 2026.4.1 (Production Release)", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
+                            Text("• پروجیکٹ: IUB BS IT Final Year Project 2026 by Saqlain Niazi", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
+                            Text("• لیگل کمپلائنس: DPP & PARC پاکستان منظور شدہ ریسرچ انجن", fontSize = 10.sp, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                            Text("• لائیو سینسرز: GPS فعال، 60 منٹ ویدر ڈیمن سٹرنکرونائزڈ", fontSize = 10.sp, color = Color(0xFF0277BD))
+                        }
+                    }
+
+                    // Language Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("ایپ کی زبان (Language):", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium))
+                        OutlinedButton(
+                            onClick = {
+                                val next = if (uiState.selectedLanguage == "اردو") "English" else "اردو"
+                                viewModel.selectLanguage(next)
+                            },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(uiState.selectedLanguage, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // Reset credentials / Logout
+                    Button(
+                        onClick = { viewModel.resetCredentials() },
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AgriRedDisease.copy(alpha = 0.9f)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("ری سیٹ کریڈنشلز و لاگ آؤٹ", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    // Backend Endpoint Config
+                    Text(
+                        text = "Python Flask Server URL:",
+                        style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.outline)
+                    )
                     OutlinedTextField(
                         value = serverInput,
                         onValueChange = { serverInput = it },
-                        label = { Text("Server Endpoint URL") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -442,19 +849,37 @@ fun HomeScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        viewModel.updateFarmerProfileName(editableFarmerName)
                         viewModel.updateServerUrl(serverInput)
-                        showSettingsDialog = false
+                        viewModel.closeSettings()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = AgriGreenPrimary)
                 ) {
-                    Text("Save")
+                    Text("محفوظ کریں / Save")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSettingsDialog = false }) {
-                    Text("Cancel")
+                TextButton(onClick = { viewModel.closeSettings() }) {
+                    Text("بند کریں")
                 }
             }
+        )
+    }
+
+    // Entertainment Shunt Fullscreen Dialog
+    if (uiState.showLudoKisanDialog) {
+        LudoKisanGameDialog(
+            appCurrentLang = uiState.appCurrentLang,
+            onDismiss = { viewModel.closeLudoKisan() }
+        )
+    }
+
+    // Detailed Weather Modal
+    if (uiState.showWeatherDetailsModal) {
+        WeatherDetailsModal(
+            uiState = uiState,
+            onDismiss = { viewModel.closeWeatherDetailsModal() },
+            onRefresh = { viewModel.refreshGpsAndWeather() }
         )
     }
 }
@@ -462,6 +887,10 @@ fun HomeScreen(
 @Composable
 private fun HomeTopBar(
     currentUser: FirebaseUser?,
+    isPhoneVerified: Boolean,
+    verifiedPhone: String?,
+    selectedLanguage: String,
+    onLanguageClick: () -> Unit,
     onSignInClick: () -> Unit,
     onProfileClick: () -> Unit,
     onSettingsClick: () -> Unit
@@ -473,14 +902,14 @@ private fun HomeTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .background(AgriGreenPrimary.copy(alpha = 0.12f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -488,64 +917,49 @@ private fun HomeTopBar(
                         imageVector = Icons.Default.Eco,
                         contentDescription = null,
                         tint = AgriGreenPrimary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
                         text = "CropDoc AI",
-                        style = MaterialTheme.typography.titleLarge.copy(
+                        style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = AgriGreenPrimary
                         )
                     )
                     Text(
-                        text = "IUB BS IT • Final Year Project",
+                        text = "IUB BS IT • Final Year Project 2026",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.outline,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 9.sp
                         )
                     )
                 }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (currentUser != null) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = AgriGreenPrimary.copy(alpha = 0.12f),
-                        modifier = Modifier.clickable { onProfileClick() }
+                // Language Switcher Button
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.clickable { onLanguageClick() }
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudDone,
-                                contentDescription = "Synced",
-                                tint = AgriGreenPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Synced",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = AgriGreenPrimary
-                                )
-                            )
-                        }
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = onSignInClick,
-                        shape = RoundedCornerShape(16.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(34.dp)
-                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = "Language",
+                            tint = AgriGreenPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Sign In",
+                            text = selectedLanguage,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )
                     }
@@ -553,14 +967,59 @@ private fun HomeTopBar(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
+                // Auth Status indicator or Login Button
+                if (currentUser != null || isPhoneVerified) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = AgriHealthyGreen.copy(alpha = 0.15f),
+                        modifier = Modifier.clickable { onProfileClick() }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Active",
+                                tint = AgriHealthyGreen,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (currentUser != null) "Gmail Sync" else "OTP Verified",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = AgriHealthyGreen,
+                                    fontSize = 10.sp
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = onSignInClick,
+                        shape = RoundedCornerShape(14.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(
+                            text = "لاگ ان / Auth",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
                 IconButton(
                     onClick = onSettingsClick,
-                    modifier = Modifier.testTag("backend_settings_button")
+                    modifier = Modifier.size(36.dp).testTag("backend_settings_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = "Backend Settings",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -568,13 +1027,20 @@ private fun HomeTopBar(
     }
 }
 
+// LEVEL 1: WELCOME BANNER ("Welcome Kisan / خوش آمدید کسان")
 @Composable
-private fun HeroWelcomeCard(currentUser: FirebaseUser?) {
+private fun HeroWelcomeCard(
+    currentUser: FirebaseUser?,
+    isPhoneVerified: Boolean,
+    verifiedPhone: String?,
+    appCurrentLang: String = "UR"
+) {
+    val isEn = appCurrentLang == "EN"
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Box(
             modifier = Modifier
@@ -582,59 +1048,285 @@ private fun HeroWelcomeCard(currentUser: FirebaseUser?) {
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
+                            Color(0xFF0F381E),
                             Color(0xFF1B5E20),
-                            Color(0xFF2E7D32),
-                            Color(0xFF388E3C)
+                            Color(0xFF2E7D32)
                         )
                     )
                 )
-                .padding(20.dp)
+                .padding(18.dp)
         ) {
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Pakistani Farmer Illustration & Badge
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 4.dp,
+                    border = BorderStroke(2.dp, Color(0xFFFFD54F)),
+                    modifier = Modifier.size(80.dp)
                 ) {
-                    Surface(
-                        color = Color(0xFFFFD54F).copy(alpha = 0.25f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = if (currentUser != null) "Cloud Synced • Firebase Active" else "CNN Deep Learning Model",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFFFD54F)
-                            ),
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
-
-                    Icon(
-                        imageVector = Icons.Default.Psychology,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.8f),
-                        modifier = Modifier.size(22.dp)
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_pakistani_farmer),
+                        contentDescription = "Pakistani Farmer",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.width(14.dp))
 
-                Text(
-                    text = "AI Crop Disease Detection",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                Column(modifier = Modifier.weight(1f)) {
+                    Surface(
+                        color = Color(0xFFFFD54F).copy(alpha = 0.25f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = if (isEn) "Govt. of Pakistan DPP Certified 2026" else "حکومت پاکستان DPP تصدیق شدہ 2026",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFD54F),
+                                fontSize = 10.sp
+                            ),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // STRICT WELCOMING ANCHOR: "Welcome Kisan" IF EN | "خوش آمدید کسان" IF UR
+                    Text(
+                        text = if (isEn) "Welcome Kisan" else "خوش آمدید کسان",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            fontSize = 17.sp
+                        )
                     )
-                )
 
-                Text(
-                    text = "Automated Rice Disease Diagnosis with bilingual English & Urdu remedy prescriptions.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.White.copy(alpha = 0.9f)
-                    ),
-                    modifier = Modifier.padding(top = 4.dp)
+                    Text(
+                        text = if (isEn)
+                            "Multi-crop botanical diagnosis for Safeda, Guava, Pomegranate, Dates, Mango, Cotton, Wheat, Rice, and Maize."
+                        else
+                            "سفیدہ، انار، کھجور، مکئی، آم، کنو، امرود، کپاس، گندم، دھان اور کماد کے پودوں اور پتوں کی مستند نباتاتی جانچ۔",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFFE8F5E9),
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
+                        ),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// LEVEL 3: LIVE SENSORS & GOOGLE WEATHER RECKONING
+@Composable
+private fun LiveSensorsWeatherCard(
+    uiState: CropUiState,
+    onRefresh: () -> Unit,
+    onExpandWeather: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onExpandWeather() }
+            .testTag("live_weather_card"),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, AgriGreenPrimary.copy(alpha = 0.25f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header: GPS Location
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Place,
+                        contentDescription = "GPS Location",
+                        tint = AgriGreenPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "موجودہ لوکیشن (GPS Sync)",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = AgriGreenPrimary
+                        )
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = AgriGreenPrimary.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = "LIVE SENSORS",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = AgriGreenPrimary,
+                            fontSize = 9.sp
+                        ),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = uiState.gpsLocation,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Weather Reckoning Parameters
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFE8F5E9), RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.WbSunny,
+                    contentDescription = null,
+                    tint = Color(0xFFE65100),
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "موسم / Weather: ${uiState.temperature} (${uiState.weatherCondition})",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1B5E20)
+                        )
+                    )
+                    Text(
+                        text = "فضا میں نمی: ${uiState.humidity} • ہوا کی رفتار: 14 کلومیٹر/گھنٹہ",
+                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF2E7D32))
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Precision Irrigation Advice
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFE1F5FE), RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Default.WaterDrop,
+                    contentDescription = null,
+                    tint = Color(0xFF0288D1),
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "پانی کا استعمال / Irrigation Guide",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF01579B)
+                        )
+                    )
+                    Text(
+                        text = uiState.precisionIrrigationAdvice,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFF0277BD),
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Extreme Weather & News Notifications
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFFF3E0), RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = Color(0xFFE65100),
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "اہم الرٹ اور نئی زرعی معلومات (News & Alerts)",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFBF360C)
+                        )
+                    )
+                    Text(
+                        text = uiState.extremeWeatherWarning,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFFD84315),
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                    uiState.agriculturalAlerts.forEach { alert ->
+                        Text(
+                            text = "• $alert",
+                            style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF5D4037)),
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            Surface(
+                color = Color(0xFFE1F5FE),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onExpandWeather() }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WaterDrop,
+                        contentDescription = null,
+                        tint = Color(0xFF0288D1),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "📊 تفصیلی موسمیات، بارش کا امکان (68%) اور طلوع/غروب کے لیے ٹیپ کریں (Click to Expand)",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0288D1),
+                            fontSize = 10.sp
+                        )
+                    )
+                }
             }
         }
     }
@@ -853,6 +1545,141 @@ private fun ModelArchitectureInfoCard() {
 }
 
 /**
+ * Botanical Plant & Leaf Anatomy Guide
+ * (ہر پودے اور پتے کی ساخت، ساخت اور بیماری کا مقام)
+ */
+@Composable
+private fun BotanicalPlantLeafGuideSection() {
+    var selectedSpecimenId by remember { mutableStateOf<String?>(null) }
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "پودوں اور پتوں کی تصویری ساخت",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            )
+            Surface(
+                color = Color(0xFF2E7D32).copy(alpha = 0.12f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "نباتاتی گائیڈ",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E7D32)
+                    ),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+        Text(
+            text = "کسان بھائی کسی غلط فہمی سے بچنے کے لیے یہاں ہر پودے اور پتے کی قدرتی بناوٹ اور بیماری کا مقام دیکھ سکتے ہیں:",
+            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline),
+            modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(CropDiseaseKnowledgeBase.BOTANICAL_CATALOG) { item ->
+                val isSelected = selectedSpecimenId == item.id
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(
+                        1.5.dp,
+                        if (isSelected) AgriGreenPrimary else MaterialTheme.colorScheme.outlineVariant
+                    ),
+                    modifier = Modifier
+                        .width(220.dp)
+                        .clickable {
+                            selectedSpecimenId = if (isSelected) null else item.id
+                        }
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (item.isTree) Color(0xFFE8F5E9) else Color(0xFFE3F2FD)
+                            ) {
+                                Text(
+                                    text = if (item.isTree) "باغ کا درخت" else "کھیت کی فصل",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (item.isTree) Color(0xFF2E7D32) else Color(0xFF1565C0),
+                                        fontSize = 10.sp
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.Eco,
+                                contentDescription = null,
+                                tint = if (item.isTree) Color(0xFF2E7D32) else Color(0xFF1565C0),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = item.nameUrdu,
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = item.nameEnglish,
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline, fontSize = 11.sp)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text(
+                                    text = "پتے کی شکل: ${item.leafTypeUrdu}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 11.sp,
+                                        lineHeight = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "بیماری کہاں لگتی ہے: ${item.whereDiseaseAttacksUrdu}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 11.sp,
+                                        lineHeight = 16.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = AgriRedDisease
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * MANDATORY VISUAL CONSTRAINT:
  * On the Home Screen/Front Page, at the very bottom area inside a styled Footer
  * or BottomNavigationBar widget, display clear and elegant text: "Developer: Saqlain Niazi".
@@ -912,7 +1739,7 @@ private fun StyledDeveloperFooter() {
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "BS Information Technology • Islamia University of Bahawalpur (IUB)",
+                text = "BS Information Technology • Islamia University of Bahawalpur (IUB) 2026",
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,

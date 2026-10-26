@@ -46,6 +46,13 @@ fun CropDoctorApp(viewModel: CropAppViewModel) {
             is Screen.Splash -> {
                 SplashScreen()
             }
+            is Screen.Onboarding -> {
+                com.example.ui.screens.OnboardingAuthGateway(
+                    uiState = uiState,
+                    viewModel = viewModel,
+                    onAuthSuccess = { viewModel.navigateToHome() }
+                )
+            }
             is Screen.SignIn -> {
                 SignInScreen(
                     onSignInSuccess = { viewModel.navigateToHome() },
@@ -62,6 +69,7 @@ fun CropDoctorApp(viewModel: CropAppViewModel) {
                     imageUri = screen.imageUri,
                     sourceText = screen.sourceText,
                     isSpeaking = isSpeaking,
+                    appCurrentLang = uiState.appCurrentLang,
                     onReplayVoice = { viewModel.replayVoice(screen.info) },
                     onStopVoice = { viewModel.stopVoice() },
                     onBackToHome = { viewModel.navigateToHome() }
