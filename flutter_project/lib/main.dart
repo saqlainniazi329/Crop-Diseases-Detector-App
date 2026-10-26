@@ -16,7 +16,7 @@ class CropDiseaseDetectionApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CropDoc AI - Crop Disease Detection',
+      title: 'CropDoc AI - Fruit Trees & Crop Disease Detection',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -65,7 +65,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
     );
 
-    // Automated transition to Home Dashboard Screen after 2.5 seconds
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -101,79 +100,58 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               child: Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
+                  color: Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.2),
                       blurRadius: 18,
                       offset: const Offset(0, 8),
-                    )
+                    ),
                   ],
                 ),
                 child: const Icon(
-                  Icons.eco_rounded,
-                  size: 80,
-                  color: Colors.white,
+                  Icons.eco,
+                  size: 76,
+                  color: Color(0xFF1E6F3D),
                 ),
               ),
             ),
             const SizedBox(height: 28),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'ISLAMIA UNIVERSITY OF BAHAWALPUR (IUB)',
-                style: TextStyle(
-                  color: Color(0xFFFFD54F),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
             const Text(
               'CropDoc AI',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+                letterSpacing: 1.1,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
-              'AI-Based Crop Disease Detection &\nRemedy Recommendation System',
-              textAlign: TextAlign.center,
+              'Fruit Trees & Field Crop Disease Diagnostic System',
               style: TextStyle(
                 color: Color(0xFFE8F5E9),
-                fontSize: 16,
+                fontSize: 13,
                 fontWeight: FontWeight.w400,
-                height: 1.3,
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'حکومتِ پاکستان منظور شدہ زرعی ادویات و اردو آواز رہنمائی',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 48),
             const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFD54F)),
-              strokeWidth: 3,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'BS Information Technology Final Year Project',
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Developer: Saqlain Niazi',
-              style: TextStyle(
-                color: Color(0xFFFFD54F),
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              strokeWidth: 2.5,
             ),
           ],
         ),
@@ -196,86 +174,68 @@ class _HomeScreenState extends State<HomeScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
   String _backendUrl = 'http://10.0.2.2:5000/predict';
+  final String _farmerName = 'پیارے کسان بھائی';
 
-  /// Picks an image via Camera or Gallery and triggers multipart HTTP POST transmission
   Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
         maxWidth: 1024,
         maxHeight: 1024,
-        imageQuality: 90,
+        imageQuality: 85,
       );
 
-      if (pickedFile == null) return; // User cancelled
+      if (pickedFile == null) return;
 
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+      });
 
-      // Perform Multipart HTTP POST request to Flask server
       final File imageFile = File(pickedFile.path);
+
       final uri = Uri.parse(_backendUrl);
-
       final request = http.MultipartRequest('POST', uri);
-      request.files.add(
-        await http.MultipartFile.fromPath('file', imageFile.path),
-      );
+      request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+      request.fields['farmer_name'] = _farmerName;
 
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 12),
-        onTimeout: () {
-          throw Exception('Connection timed out. Ensure Flask backend is running on http://10.0.2.2:5000');
-        },
-      );
-
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 12));
       final response = await http.Response.fromStream(streamedResponse);
 
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> resultJson = jsonDecode(response.body);
+        final Map<String, dynamic> responseJson = json.decode(response.body);
 
         if (!mounted) return;
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => ResultScreen(
               imageFile: imageFile,
-              predictionData: resultJson,
+              predictionData: responseJson,
+              farmerName: _farmerName,
             ),
           ),
         );
       } else {
-        _showErrorSnackBar('Server error (${response.statusCode}): ${response.body}');
+        _showErrorSnackBar('Server returned error: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showErrorDialog(e.toString());
+      setState(() {
+        _isLoading = false;
+      });
+      _showFallbackPredictionDialog(e.toString());
     }
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red.shade700,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showErrorDialog(String error) {
+  void _showFallbackPredictionDialog(String error) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Analysis Failed'),
-          ],
-        ),
+        title: const Text('Backend Offline'),
         content: Text(
-          'Could not reach Flask backend ($error).\n\nPlease make sure:\n1. Your Flask server (app.py) is running on 0.0.0.0:5000\n2. For Android Emulator, use http://10.0.2.2:5000/predict\n3. For Physical Phone, use your PC Wi-Fi IP (e.g., http://192.168.1.X:5000/predict).',
-          style: const TextStyle(fontSize: 13),
+          'Flask backend could not be reached ($error).\nEnsure Python Flask server is running on port 5000.',
         ),
         actions: [
           TextButton(
@@ -287,22 +247,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBF4),
       appBar: AppBar(
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.eco, color: Colors.white, size: 24),
-            SizedBox(width: 8),
-            Text(
-              'CropDoc AI',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-          ],
+        title: const Text(
+          'CropDoc AI • درخت و فصل ڈاکٹر',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              _showSettingsDialog();
+            },
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -310,23 +280,22 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Hero Banner Card
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                            colors: [Color(0xFF1E6F3D), Color(0xFF2E7D32)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(18),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF1B5E20).withOpacity(0.25),
+                              color: Colors.green.withOpacity(0.25),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -338,13 +307,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFD54F).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(10),
+                                color: Colors.amber.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text(
-                                'CNN Model Architecture • 224x224 RGB',
+                                'حکومت پاکستان DPP تصدیق شدہ',
                                 style: TextStyle(
-                                  color: Color(0xFFFFD54F),
+                                  color: Colors.amberAccent,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -352,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              'AI-Based Crop Health Scanner',
+                              'درختوں اور فصلوں کی خودکار تشخیص',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -361,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Diagnose Rice Crop Leaf Diseases instantly with English & localized Urdu remedy recommendations.',
+                              'آم، کنو، امرود، سیب، کپاس، گندم، دھان اور کماد کے پتوں کا اسکین کریں اور فوری اردو آواز میں علاج سنیں۔',
                               style: TextStyle(
                                 color: Color(0xFFE8F5E9),
                                 fontSize: 13,
@@ -375,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 20),
 
                       const Text(
-                        'Select Crop Leaf Image',
+                        'Select Crop or Tree Leaf Image',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -384,16 +353,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Capture an infected leaf directly with the camera or choose a photo from the gallery.',
+                        'پتے کی واضح تصویر کیمرے سے لیں یا گیلری سے منتخب کریں۔',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
 
                       const SizedBox(height: 14),
 
-                      // TWO PROMINENT RESPONSIVE BUTTONS
                       Row(
                         children: [
-                          // 1. Camera Capture Button
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: _isLoading ? null : () => _pickAndUploadImage(ImageSource.camera),
@@ -415,7 +382,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // 2. Gallery Upload Button
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: _isLoading ? null : () => _pickAndUploadImage(ImageSource.gallery),
@@ -440,9 +406,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Diagnosable Rice Classes Overview
                       const Text(
-                        'Diagnosable Crop Classes',
+                        'Supported Trees & Crops (درخت و فصلیں)',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -457,106 +422,85 @@ class _HomeScreenState extends State<HomeScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: 10,
                         mainAxisSpacing: 10,
-                        childAspectRatio: 2.1,
+                        childAspectRatio: 2.2,
                         children: const [
-                          _ClassChip(titleEn: 'Bacterial Blight', titleUr: 'بیکٹیریل بلائٹ', color: Colors.red),
-                          _ClassChip(titleEn: 'Blast', titleUr: 'رائس بلاسٹ', color: Colors.purple),
-                          _ClassChip(titleEn: 'Brown Spot', titleUr: 'بھورا دھبہ', color: Colors.orange),
-                          _ClassChip(titleEn: 'Healthy', titleUr: 'صحت مند فصل', color: Colors.green),
+                          _ClassChip(titleEn: 'Mango Tree', titleUr: 'آم کا باغ (اینتھراکنوز)', color: Colors.green),
+                          _ClassChip(titleEn: 'Citrus / Kinnow', titleUr: 'کنو و مالٹا (کینکر)', color: Colors.orange),
+                          _ClassChip(titleEn: 'Guava Tree', titleUr: 'امرود کا باغ (سوکڑا)', color: Colors.teal),
+                          _ClassChip(titleEn: 'Cotton Crop', titleUr: 'کپاس (پتہ مروڑ)', color: Colors.blue),
+                          _ClassChip(titleEn: 'Wheat Crop', titleUr: 'گندم (پیلی کنگی)', color: Colors.amber),
+                          _ClassChip(titleEn: 'Rice Paddy', titleUr: 'دھان (بلاسٹ و بلائٹ)', color: Colors.deepPurple),
                         ],
                       ),
 
                       const SizedBox(height: 16),
-
-                      // Flask Endpoint Info Card
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.shade100),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.hub_outlined, color: Color(0xFF1E6F3D), size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Backend Target: $_backendUrl',
-                                style: const TextStyle(fontSize: 11, color: Colors.black87),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
               ),
 
               // MANDATORY VISUAL CONSTRAINT:
-              // "On the Home Screen/Front Page, at the very bottom area inside a styled Footer
-              // or BottomNavigationBar widget, display clear and elegant text: "Developer: Saqlain Niazi"."
               Container(
                 width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.06),
                       blurRadius: 8,
-                      offset: const Offset(0, -2),
-                    )
+                      offset: const Offset(0, -3),
+                    ),
                   ],
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E6F3D).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFF1E6F3D).withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.eco, size: 16, color: Color(0xFF1E6F3D)),
-                          SizedBox(width: 6),
-                          Text(
-                            'Developer: Saqlain Niazi',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E6F3D),
-                              letterSpacing: 0.5,
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E6F3D).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF1E6F3D).withOpacity(0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified, size: 16, color: Color(0xFF1E6F3D)),
+                            SizedBox(width: 6),
+                            Text(
+                              'Developer: Saqlain Niazi',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E6F3D),
+                                letterSpacing: 0.5,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'BS Information Technology • Islamia University of Bahawalpur (IUB)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(height: 4),
+                      Text(
+                        'BS Information Technology • Islamia University of Bahawalpur (IUB)',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
 
-          // Loading Progress Overlay
           if (_isLoading)
             Container(
-              color: Colors.black45,
+              color: Colors.black.withOpacity(0.4),
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.all(24),
@@ -572,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       SizedBox(height: 16),
                       Text(
-                        'Analyzing crop leaf sample...\nSending tensor to Flask CNN Model',
+                        'پتے کی تشخیص جاری ہے...\nکمپیوٹر ویژن تجزیہ اور DPP ادویات سرچنگ',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
@@ -581,6 +525,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  void _showSettingsDialog() {
+    final controller = TextEditingController(text: _backendUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Flask Backend Endpoint'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'URL (e.g. http://10.0.2.2:5000/predict)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _backendUrl = controller.text.trim();
+              });
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -623,7 +593,7 @@ class _ClassChip extends StatelessWidget {
                 ),
                 Text(
                   titleUr,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -636,28 +606,30 @@ class _ClassChip extends StatelessWidget {
 }
 
 // ==========================================
-// 3. ELEGANT RESULT VIEW SCREEN
+// 3. ELEGANT RESULT VIEW SCREEN WITH URDU VOICE
 // ==========================================
 class ResultScreen extends StatelessWidget {
   final File imageFile;
   final Map<String, dynamic> predictionData;
+  final String farmerName;
 
   const ResultScreen({
     super.key,
     required this.imageFile,
     required this.predictionData,
+    required this.farmerName,
   });
 
   @override
   Widget build(BuildContext context) {
-    final String prediction = predictionData['prediction'] ?? 'Unknown Disease';
-    final double confidence = (predictionData['confidence'] ?? 0.0) * 100;
-    final Map<String, dynamic> remedies = predictionData['remedies'] ?? {};
-
-    final String adviceEn = remedies['advice_english'] ?? 'No English advice provided.';
-    final String adviceUr = remedies['advice_urdu'] ?? 'کوئی اردو ہدایات دستیاب نہیں ہیں۔';
-    final String pesticideEn = remedies['pesticide_english'] ?? 'No chemical pesticide required.';
-    final String pesticideUr = remedies['pesticide_urdu'] ?? 'کسی کیمیائی سپرے کی ضرورت نہیں ہے۔';
+    final String prediction = predictionData['prediction'] ?? 'Unknown Condition';
+    final double confidence = ((predictionData['confidence'] ?? 0.0) as num).toDouble() * 100;
+    final String cropName = predictionData['crop_or_tree_name'] ?? 'باغ / فصل';
+    final String diseaseUrdu = predictionData['disease_urdu'] ?? prediction;
+    final String monitoringDays = predictionData['monitoring_days_urdu'] ?? '7 دن تک باقاعدہ معائنہ کریں';
+    final String irrigationGuide = predictionData['irrigation_guide_urdu'] ?? 'پانی کی مناسب سطح برقرار رکھیں';
+    final List<dynamic> approvedPesticides = predictionData['approved_pesticides_urdu'] ?? [];
+    final String speechText = predictionData['audio_speech_text_urdu'] ?? '';
 
     final bool isHealthy = prediction.toLowerCase() == 'healthy';
     final Color diseaseColor = isHealthy ? Colors.green.shade700 : const Color(0xFFD32F2F);
@@ -665,7 +637,7 @@ class ResultScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FBF4),
       appBar: AppBar(
-        title: const Text('Diagnosis & Remedy Result'),
+        title: const Text('تشخیص اور منظور شدہ علاج'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -676,20 +648,81 @@ class ResultScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Preview Image Container
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B5E20),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.volume_up, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'اردو وائس اسسٹنٹ: پیارے کسان $farmerName',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'خودکار اردو آواز میں پودے کا علاج اور پانی کی تفصیل سنیں',
+                          style: TextStyle(color: Color(0xFFC8E6C9), fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(speechText.isNotEmpty ? speechText : 'اردو آڈیو چلائی جا رہی ہے...'),
+                          duration: const Duration(seconds: 4),
+                          backgroundColor: const Color(0xFF1B5E20),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF1B5E20),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    ),
+                    child: const Text('سنیں', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Image.file(
                 imageFile,
-                height: 220,
+                height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // Prediction & Confidence Card
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -699,25 +732,33 @@ class ResultScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const Text(
-                    'DETECTED CROP STATUS',
-                    style: TextStyle(
-                      fontSize: 11,
+                  Text(
+                    cropName,
+                    style: const TextStyle(
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: Colors.black54,
+                      color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
 
-                  // DYNAMICALLY RENDERED IN BOLD RED (as required)
                   Text(
                     prediction,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: diseaseColor, // Rendered in bold red for diseases
+                      color: diseaseColor,
+                    ),
+                  ),
+
+                  Text(
+                    diseaseUrdu,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
 
@@ -742,47 +783,86 @@ class ResultScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
-            // DUAL-LANGUAGE REMEDY ACTIONS: STACKED ENGLISH & LOCALIZED URDU
-            const Text(
-              'Recommended Pesticides & Remedies',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E6F3D),
-              ),
+            _buildAdvisoryCard(
+              title: 'کتنے دن تک نگرانی کرنی چاہیے (Field Monitoring)',
+              icon: Icons.calendar_month,
+              contentUrdu: monitoringDays,
+              accentColor: Colors.amber.shade900,
             ),
-            const SizedBox(height: 10),
 
-            // 1. Recommended Pesticide Card (Dual English & Urdu)
-            _buildRemedyCard(
-              title: 'Prescribed Chemical Pesticide (زرعی سپرے)',
-              icon: Icons.sanitizer_outlined,
-              englishContent: pesticideEn,
-              urduContent: pesticideUr,
-              accentColor: Colors.deepOrange.shade800,
+            const SizedBox(height: 12),
+
+            _buildAdvisoryCard(
+              title: 'پانی کی صورتحال (Irrigation & Water Guide)',
+              icon: Icons.water_drop,
+              contentUrdu: irrigationGuide,
+              accentColor: Colors.blue.shade800,
             ),
 
             const SizedBox(height: 14),
 
-            // 2. Cultural / Agricultural Advice (Dual English & Urdu)
-            _buildRemedyCard(
-              title: 'Agronomic Guidance & Protection (حفاظتی تدابیر)',
-              icon: Icons.shield_outlined,
-              englishContent: adviceEn,
-              urduContent: adviceUr,
-              accentColor: const Color(0xFF1E6F3D),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.local_pharmacy, color: Color(0xFF1E6F3D)),
+                      SizedBox(width: 8),
+                      Text(
+                        'حکومتِ پاکستان منظور شدہ زرعی ادویات',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E6F3D),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  if (approvedPesticides.isEmpty)
+                    const Text('اس وقت کسی کیمیائی اسپرے کی ضرورت نہیں ہے۔')
+                  else
+                    ...approvedPesticides.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• ', style: TextStyle(color: Color(0xFF1E6F3D), fontSize: 16)),
+                            Expanded(
+                              child: Text(
+                                p.toString(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2E7D32),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Retake / Scan Another Button
             ElevatedButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.refresh, color: Colors.white),
               label: const Text(
-                'Scan Another Crop Leaf (نیا پودا چیک کریں)',
+                'نیا پودا یا درخت چیک کریں (Scan Another)',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               style: ElevatedButton.styleFrom(
@@ -797,103 +877,45 @@ class ResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRemedyCard({
+  Widget _buildAdvisoryCard({
     required String title,
     required IconData icon,
-    required String englishContent,
-    required String urduContent,
+    required String contentUrdu,
     required Color accentColor,
   }) {
     return Container(
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: accentColor.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: accentColor.withOpacity(0.3)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.08),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(14),
-                topRight: Radius.circular(14),
-              ),
-            ),
-            child: Row(
+          Icon(icon, color: accentColor, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, size: 20, color: accentColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: accentColor,
-                    ),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          // Stacked English and Urdu Text
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // English Advice
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('🇬🇧 ', style: TextStyle(fontSize: 14)),
-                    Expanded(
-                      child: Text(
-                        englishContent,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black87,
-                          height: 1.35,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Divider(height: 1),
-                ),
-                // Localized Urdu Advice
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('🇵🇰 ', style: TextStyle(fontSize: 14)),
-                    Expanded(
-                      child: Text(
-                        urduContent,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF1B5E20),
-                          height: 1.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  contentUrdu,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),

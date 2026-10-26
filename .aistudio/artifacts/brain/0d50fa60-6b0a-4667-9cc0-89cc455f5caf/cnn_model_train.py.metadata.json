@@ -1,0 +1,5 @@
+{
+  "summary":  "Standalone Python deep learning model training script (train.py) using TensorFlow / Keras for the CropDoc AI project. Implements a Sequential Convolutional Neural Network (CNN) architecture with 3 Conv2D layers (32, 64, 64 filters with ReLU activation) interleaved with MaxPooling2D layers, Flatten, Dense(64, ReLU), and Dense(4, Softmax) decision head. Compiles with Adam optimizer and SparseCategoricalCrossentropy, trains on image datasets, and executes model.save('crop_disease_model.h5').",
+  "updatedAt":  "2026-10-25T19:44:47.814119385Z",
+  "userFacing":  true
+}

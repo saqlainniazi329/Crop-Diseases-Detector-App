@@ -56,10 +56,14 @@ fun CropDoctorApp(viewModel: CropAppViewModel) {
                 HomeScreen(uiState = uiState, viewModel = viewModel)
             }
             is Screen.Result -> {
+                val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
                 ResultScreen(
                     resultInfo = screen.info,
                     imageUri = screen.imageUri,
                     sourceText = screen.sourceText,
+                    isSpeaking = isSpeaking,
+                    onReplayVoice = { viewModel.replayVoice(screen.info) },
+                    onStopVoice = { viewModel.stopVoice() },
                     onBackToHome = { viewModel.navigateToHome() }
                 )
             }

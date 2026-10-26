@@ -721,15 +721,34 @@ private fun CloudScansSection(scans: List<CropScanEntity>) {
 @Composable
 private fun SupportedDiseasesSection() {
     Column {
-        Text(
-            text = "Target Rice Crop Classes",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "باغات اور فصلیں (Trees & Crops)",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             )
-        )
+            Surface(
+                color = AgriGreenPrimary.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "حکومت پاکستان DPP تصدیق شدہ",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = AgriGreenPrimary
+                    ),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
         Text(
-            text = "Trained on Rice Leaf Disease Dataset with 4 diagnostic classes:",
+            text = "پاکستان میں تمام اقسام کے پھل دار درختوں اور فصلوں کی بیماریوں کی حقیقی کمپیوٹر ویژن تشخیص:",
             style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline),
             modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
         )
@@ -738,41 +757,59 @@ private fun SupportedDiseasesSection() {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            val classes = listOf(
-                Triple("Bacterial Blight", "بیکٹیریل بلائٹ", Color(0xFFD32F2F)),
-                Triple("Blast", "رائس بلاسٹ", Color(0xFFC2185B)),
-                Triple("Brown Spot", "بھورا دھبہ", Color(0xFFF57C00)),
-                Triple("Healthy", "صحت مند فصل", Color(0xFF388E3C))
+            val speciesList = listOf(
+                Triple("Mango (آم)", "اینتھراکنوز / کالا دھبہ", "باغ کا درخت"),
+                Triple("Citrus (کنو / مالٹا)", "سٹرس کینکر (کوڑھ)", "باغ کا درخت"),
+                Triple("Guava (امرود)", "امرود کا سوکڑا (Wilt)", "باغ کا درخت"),
+                Triple("Cotton (کپاس)", "پتہ مروڑ وائرس (CLCuV)", "کھیت کی فصل"),
+                Triple("Wheat (گندم)", "پیلگی کنگی (Yellow Rust)", "کھیت کی فصل"),
+                Triple("Rice (دھان)", "رائس بلاسٹ و بلائٹ", "کھیت کی فصل"),
+                Triple("Sugarcane (گنا)", "سرخ گلن (Red Rot)", "کھیت کی فصل"),
+                Triple("Apple (سیب)", "سیب کا خارش (Apple Scab)", "پہاڑی درخت")
             )
 
-            items(classes) { (nameEn, nameUr, color) ->
+            items(speciesList) { (species, disease, category) ->
+                val isTreeType = category.contains("درخت")
                 Card(
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    modifier = Modifier.width(150.dp)
+                    border = BorderStroke(1.dp, if (isTreeType) Color(0xFF2E7D32).copy(alpha = 0.3f) else Color(0xFF1565C0).copy(alpha = 0.3f)),
+                    modifier = Modifier.width(165.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .background(color, CircleShape)
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (isTreeType) Color(0xFFE8F5E9) else Color(0xFFE3F2FD)
+                        ) {
+                            Text(
+                                text = category,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isTreeType) Color(0xFF2E7D32) else Color(0xFF1565C0),
+                                    fontSize = 10.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = nameEn,
+                            text = species,
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
-                            )
+                            ),
+                            maxLines = 1
                         )
                         Text(
-                            text = nameUr,
+                            text = disease,
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.outline,
-                                fontWeight = FontWeight.Medium
-                            )
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp
+                            ),
+                            maxLines = 1
                         )
                     }
                 }

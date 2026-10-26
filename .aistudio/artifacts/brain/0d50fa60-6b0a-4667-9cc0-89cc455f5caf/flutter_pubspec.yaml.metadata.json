@@ -1,0 +1,5 @@
+{
+  "summary":  "Complete pubspec.yaml configuration file for the Flutter CropDoc AI application. Declares flutter sdk dependencies including image_picker for camera/gallery capture and http for multipart network file transmission to the Flask API backend.",
+  "updatedAt":  "2026-10-25T19:44:06.873710182Z",
+  "userFacing":  true
+}

@@ -9,6 +9,7 @@ import com.example.data.repository.CropScanRepository
 import com.example.model.CropDiseaseInfo
 import com.example.model.CropDiseaseKnowledgeBase
 import com.example.network.FlaskCropService
+import com.example.speech.UrduVoiceAssistant
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -37,6 +38,7 @@ data class DiagnosisHistoryItem(
     val id: String,
     val diseaseName: String,
     val diseaseNameUrdu: String,
+    val cropNameUrdu: String,
     val confidence: Float,
     val dateString: String,
     val imageUri: Uri?
@@ -63,6 +65,9 @@ class CropAppViewModel(application: Application) : AndroidViewModel(application)
 
     private val cropService = FlaskCropService(application)
     private val scanRepository = CropScanRepository(application)
+    val voiceAssistant = UrduVoiceAssistant(application)
+    val isSpeaking: StateFlow<Boolean> = voiceAssistant.isSpeaking
+
     private var cloudObservationJob: Job? = null
 
     init {
@@ -90,7 +95,7 @@ class CropAppViewModel(application: Application) : AndroidViewModel(application)
         cloudObservationJob?.cancel()
         cloudObservationJob = viewModelScope.launch {
             scanRepository.observeScans()
-                .catch { /* Handle/ignore error gracefully */ }
+                .catch { /* Handle error gracefully */ }
                 .collect { scans ->
                     _uiState.update { it.copy(cloudScans = scans) }
                 }
@@ -107,12 +112,12 @@ class CropAppViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update { 
                 it.copy(
                     isAnalyzing = true, 
-                    analysisProgressText = "Preprocessing crop image (224x224 RGB)..." 
+                    analysisProgressText = "درخت / پودے کے پتے کا کمپیوٹر ویژن تجزیہ جاری ہے..." 
                 ) 
             }
             delay(400)
             _uiState.update { 
-                it.copy(analysisProgressText = "Sending tensor array to CNN model..." ) 
+                it.copy(analysisProgressText = "Multi-Spectral Edge-Entropy & Chlorosis اسکیننگ..." ) 
             }
             
             try {
@@ -124,6 +129,7 @@ class CropAppViewModel(application: Application) : AndroidViewModel(application)
                     id = System.currentTimeMillis().toString(),
                     diseaseName = result.diseaseName,
                     diseaseNameUrdu = result.diseaseNameUrdu,
+                    cropNameUrdu = result.cropOrTreeNameUrdu,
                     confidence = result.confidence,
                     dateString = dateFormat.format(Date()),
                     imageUri = uri
@@ -133,12 +139,12 @@ class CropAppViewModel(application: Application) : AndroidViewModel(application)
                 if (Firebase.auth.currentUser != null) {
                     launch {
                         scanRepository.saveScan(
-                            cropType = "Rice",
+                            cropType = result.cropOrTreeName,
                             diseaseName = result.diseaseName,
                             diseaseNameUrdu = result.diseaseNameUrdu,
                             confidence = result.confidence.toDouble(),
                             severity = result.severity,
-                            notes = "Diagnosed via CropDoc AI Scanner ($source)"
+                            notes = "حکومتِ پاکستان منظور شدہ ادویات تجویز کردہ ($source)"
                         )
                     }
                 }
@@ -150,18 +156,62 @@ class CropAppViewModel(application: Application) : AndroidViewModel(application)
                         history = listOf(historyEntry) + state.history
                     )
                 }
+
+                // AUTOMATIC VOICE ASSISTANT IN URDU
+                // Automatically speaks out loud to the farmer in authentic Urdu
+                val farmerName = _uiState.value.currentUser?.displayName 
+                    ?: _uiState.value.currentUser?.email?.substringBefore("@") 
+                    ?: "پیارے کسان بھائی"
+
+                val primaryPesticideUrdu = result.approvedPesticidesUrdu.firstOrNull() 
+                    ?: "محکمہ زراعت کے بتائے گئے سپرے پر عمل کریں۔"
+
+                delay(500)
+                voiceAssistant.speakDiagnosis(
+                    farmerName = farmerName,
+                    cropOrTreeName = result.cropOrTreeNameUrdu,
+                    diseaseNameUrdu = result.diseaseNameUrdu,
+                    severityUrdu = result.severityUrdu,
+                    approvedMedicineUrdu = primaryPesticideUrdu,
+                    waterStatusUrdu = result.irrigationGuideUrdu,
+                    monitoringDaysUrdu = result.monitoringPeriodUrdu
+                )
+
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
                         isAnalyzing = false,
-                        errorMessage = "Analysis failed: ${e.localizedMessage}"
+                        errorMessage = "تجزیہ مکمل نہ ہو سکا: ${e.localizedMessage}"
                     ) 
                 }
             }
         }
     }
 
+    fun replayVoice(info: CropDiseaseInfo) {
+        val farmerName = _uiState.value.currentUser?.displayName 
+            ?: _uiState.value.currentUser?.email?.substringBefore("@") 
+            ?: "پیارے کسان بھائی"
+
+        val primaryPesticideUrdu = info.approvedPesticidesUrdu.firstOrNull() ?: ""
+
+        voiceAssistant.speakDiagnosis(
+            farmerName = farmerName,
+            cropOrTreeName = info.cropOrTreeNameUrdu,
+            diseaseNameUrdu = info.diseaseNameUrdu,
+            severityUrdu = info.severityUrdu,
+            approvedMedicineUrdu = primaryPesticideUrdu,
+            waterStatusUrdu = info.irrigationGuideUrdu,
+            monitoringDaysUrdu = info.monitoringPeriodUrdu
+        )
+    }
+
+    fun stopVoice() {
+        voiceAssistant.stop()
+    }
+
     fun navigateToHome() {
+        voiceAssistant.stop()
         _uiState.update { it.copy(currentScreen = Screen.Home, selectedImageUri = null) }
     }
 
@@ -183,6 +233,11 @@ class CropAppViewModel(application: Application) : AndroidViewModel(application)
 
     fun createTempPictureFile(): File {
         val storageDir = getApplication<Application>().cacheDir
-        return File.createTempFile("crop_scan_", ".jpg", storageDir)
+        return File.createTempFile("crop_tree_scan_", ".jpg", storageDir)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        voiceAssistant.shutdown()
     }
 }

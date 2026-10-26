@@ -4,31 +4,55 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- AI Scan Target Corner Brackets -->
+    <!-- Modern AI Scanner Corner Reticles (Bio-Tech Diagnostic) -->
     <path
-        android:strokeColor="#A5D6A7"
-        android:strokeWidth="3.2"
+        android:strokeColor="#81C784"
+        android:strokeWidth="2.8"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000"
-        android:pathData="M33,40 L33,33 L40,33 M68,33 L75,33 L75,40 M33,68 L33,75 L40,75 M68,75 L75,75 L75,68" />
+        android:pathData="M28,38 L28,28 L38,28 M70,28 L80,28 L80,38 M28,70 L28,80 L38,80 M70,80 L80,80 L80,70" />
 
-    <!-- Central Leaf & Sprout Symbol -->
-    <!-- Main leaf body -->
+    <!-- Outer Protective Bio-Shield -->
+    <path
+        android:strokeColor="#40FFFFFF"
+        android:strokeWidth="1.5"
+        android:fillColor="#15FFFFFF"
+        android:pathData="M54,23 L74,32 C74,56 65,72 54,82 C43,72 34,56 34,32 Z" />
+
+    <!-- Central Majestic Leaf / Tree Emblem -->
+    <!-- Left Leaf Wing (Vibrant Emerald) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,32 C43,44 41,56 47,68 C51,75 58,76 63,73 C69,69 71,59 67,49 C63,40 57,34 54,32 Z" />
-    
-    <!-- Inner vein / leaf detail -->
+        android:pathData="M54,30 C41,43 38,58 45,71 C50,78 54,80 54,80 C54,80 52,62 54,48 Z" />
+
+    <!-- Right Leaf Wing (Subtle Mint/Translucent) -->
     <path
-        android:strokeColor="#2E7D32"
-        android:strokeWidth="2.0"
+        android:fillColor="#C8E6C9"
+        android:pathData="M54,30 C67,43 70,58 63,71 C58,78 54,80 54,80 C54,80 56,62 54,48 Z" />
+
+    <!-- Neural Network Leaf Spine / Vein -->
+    <path
+        android:strokeColor="#1B5E20"
+        android:strokeWidth="2.2"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M54,38 C53,48 53,58 58,68" />
+        android:pathData="M54,34 L54,76" />
+    <path
+        android:strokeColor="#1B5E20"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M54,46 L47,40 M54,54 L61,48 M54,62 L48,57" />
 
-    <!-- AI Sparkle / Healthy node -->
+    <!-- Golden AI Pulse / Healthy Sprout Node -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M54,26m-3.5,0a3.5,3.5 0,1,1 7,0a3.5,3.5 0,1,1 -7,0" />
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M40,50 L42,46 L46,44 L42,42 L40,38 L38,42 L34,44 L38,46 Z" />
     <path
         android:fillColor="#FFE082"
-        android:pathData="M40,46 L42,42 L46,40 L42,38 L40,34 L38,38 L34,40 L38,42 Z" />
+        android:pathData="M68,58 L70,55 L73,53 L70,51 L68,48 L66,51 L63,53 L66,55 Z" />
 </vector>
